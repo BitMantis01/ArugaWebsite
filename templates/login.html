@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Login — ARUGA{% endblock %}
+{% block body %}
+
+<nav class="navbar">
+    <div class="logo-area">
+        <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
+            <img src="/static/images/logo.svg" alt="Logo" width="40" height="40" style="border-radius:8px;"
+                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23f4a4b5%22 width=%22100%22 height=%22100%22 rx=%2220%22/><text x=%2250%22 y=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>A</text></svg>'">
+            <span>ARUGA</span>
+        </a>
+    </div>
+</nav>
+
+<div class="auth-container">
+    <div class="card">
+        <h2>Welcome Back</h2>
+        <p class="subtitle">Sign in to your research dashboard</p>
+
+        <div id="login-error" style="display:none;background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;margin-bottom:1rem;font-size:0.9rem;"></div>
+
+        <form id="login-form" method="POST" action="/api/login">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn btn-pink" style="width:100%;margin-top:0.5rem;">Sign In</button>
+        </form>
+
+        <p style="text-align:center;margin-top:1.5rem;font-size:0.9rem;color:var(--gray-400);">
+            Don't have an account? <a href="/signup">Create one</a>
+        </p>
+    </div>
+</div>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const err = document.getElementById('login-error');
+    err.style.display = 'none';
+
+    try {
+        const resp = await fetch('/api/login', { method: 'POST', body: formData });
+        const data = await resp.json();
+
+        if (resp.ok && data.status === 'ok') {
+            window.location.href = '/dashboard';
+        } else {
+            err.textContent = data.detail || data.message || 'Login failed';
+            err.style.display = 'block';
+        }
+    } catch (error) {
+        err.textContent = 'An unexpected error occurred. Please try again.';
+        err.style.display = 'block';
+    }
+});
+</script>
+
+
+{% endblock %}

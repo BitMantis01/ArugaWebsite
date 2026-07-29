@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f4a4b5"/>
+      <stop offset="100%" style="stop-color:#b06874"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded square -->
+  <rect width="200" height="200" rx="40" fill="url(#bg)"/>
+  <!-- Heart / medical cross -->
+  <g transform="translate(100,90)">
+    <!-- Heart shape -->
+    <path d="M0,-10 C-25,-45 -65,-35 -65,-5 C-65,25 0,55 0,55 C0,55 65,25 65,-5 C65,-35 25,-45 0,-10Z"
+          fill="white" opacity="0.95"/>
+    <!-- Pulse line inside heart -->
+    <path d="M-30,5 L-15,5 L-8,-15 L0,30 L8,-15 L15,5 L30,5"
+          stroke="#f4a4b5" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <!-- Text -->
+  <text x="100" y="175" text-anchor="middle" fill="white" font-family="Inter, Segoe UI, sans-serif"
+        font-size="28" font-weight="800" letter-spacing="2">ARUGA</text>
+</svg>

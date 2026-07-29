@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — ARUGA{% endblock %}
+{% block body %}
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="logo-area">
+        <img src="/static/images/logo.svg" alt="Logo" width="40" height="40" style="border-radius:8px;"
+             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23f4a4b5%22 width=%22100%22 height=%22100%22 rx=%2220%22/><text x=%2250%22 y=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>A</text></svg>'">
+        <span>ARUGA</span>
+    </div>
+    <div class="nav-links">
+        <span style="font-size:0.9rem;color:var(--gray-600);">{{ user.full_name }}</span>
+        <a href="/api/logout" class="btn btn-outline btn-sm">Logout</a>
+    </div>
+</nav>
+
+<div class="dashboard-wrapper">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <button class="tab-btn active" data-tab="summary">
+            Summary
+        </button>
+        <button class="tab-btn" data-tab="live-feed">
+            Live Feed
+        </button>
+        <button class="tab-btn" data-tab="vitals">
+            Vitals History
+        </button>
+        <button class="tab-btn" data-tab="prediction">
+            Predictions
+        </button>
+        <button class="tab-btn" data-tab="notifications">
+            Notifications
+            <span id="unread-badge" style="background:var(--pink-500);color:white;border-radius:20px;padding:1px 8px;font-size:0.7rem;display:none;">0</span>
+        </button>
+        <button class="tab-btn" data-tab="profile">
+            Profile
+        </button>
+        <button class="tab-btn" data-tab="debug">
+            Debug
+        </button>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="dashboard-content">
+
+        <!-- ========== SUMMARY TAB ========== -->
+        <div class="tab-panel active" id="tab-summary">
+            <h2 style="color:var(--pink-700);margin-bottom:1rem;">Summary Dashboard</h2>
+
+            <!-- Vitals Cards -->
+            <div class="vitals-grid" id="summary-vitals">
+                {% set v = latest_vital %}
+                <div class="card vital-card">
+                    <div class="vital-label">SPO2</div>
+                    <div class="vital-value" id="vital-spo2-val">{{ v.spo2 if v and v.spo2 else '--' }}</div>
+                    <div class="vital-unit">%</div>
+                    <div class="vital-status" id="vital-spo2-status">{{ 'Normal' if v and v.spo2 and v.spo2 >= 95 else 'Warning' if v and v.spo2 and v.spo2 >= 90 else 'Critical' if v and v.spo2 else '--' }}</div>
+                </div>
+                <div class="card vital-card">
+                    <div class="vital-label">Heart Rate</div>
+                    <div class="vital-value" id="vital-hr-val">{{ v.heart_rate if v and v.heart_rate else '--' }}</div>
+                    <div class="vital-unit">BPM</div>
+                    <div class="vital-status" id="vital-hr-status">{{ 'Normal' if v and v.heart_rate else '--' }}</div>
+                </div>
+                <div class="card vital-card">
+                    <div class="vital-label">Temperature</div>
+                    <div class="vital-value" id="vital-temp-val">{{ v.temperature if v and v.temperature else '--' }}</div>
+                    <div class="vital-unit">°C</div>
+                    <div class="vital-status" id="vital-temp-status">{{ 'Normal' if v and v.temperature else '--' }}</div>
+                </div>
+                <div class="card vital-card">
+                    <div class="vital-label">Blood Pressure</div>
+                    <div class="vital-value" id="vital-bp-val" style="font-size:1.5rem;">
+                        {{ (v.systolic_bp|string if v and v.systolic_bp else '--') + '/' + (v.diastolic_bp|string if v and v.diastolic_bp else '--') if v else '--/--' }}
+                    </div>
+                    <div class="vital-unit">mmHg</div>
+                    <div class="vital-status" id="vital-bp-status">{{ 'Normal' if v else '--' }}</div>
+                </div>
+            </div>
+            <div class="last-updated" id="summary-last-updated">
+                <span class="dot"></span>
+                Last updated: <span id="summary-sec-ago">{% if v %}{{ ((now() - v.recorded_at).total_seconds()|int) if v else '--' }}{% else %}--{% endif %}</span> sec ago
+            </div>
+
+            <!-- Scheduled Medicines -->
+            <div class="card" style="margin-top:1.5rem;">
+                <div class="card-header">
+                    <h3>Scheduled Medicines</h3>
+                </div>
+                <div class="medicine-list" id="medicine-list">
+                    {% if medicines %}
+                        {% for med in medicines %}
+                        <div class="medicine-item">
+                            <div>
+                                <div class="med-name">{{ med.name }} — {{ med.dosage }}</div>
+                                <div class="med-detail">{{ med.frequency }} | {{ med.scheduled_time or 'As needed' }}</div>
+                            </div>
+                            {% if med.notes %}<div style="font-size:0.8rem;color:var(--gray-400);">{{ med.notes }}</div>{% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color:var(--gray-400);text-align:center;padding:1rem;">No scheduled medicines.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== LIVE FEED TAB (COMBINED) ========== -->
+        <div class="tab-panel" id="tab-live-feed">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+                <h2 style="color:var(--pink-700);">Live Feed</h2>
+                <div class="last-updated" id="feed-last-updated" style="margin:0;">
+                    <span class="dot" id="feed-dot"></span>
+                    Last snapshot: <span id="feed-sec-ago">--</span> sec ago
+                </div>
+            </div>
+
+            <!-- Main snapshot -->
+            <div class="card" style="margin-bottom:1.5rem;">
+                <div class="card-header"><h3>Current Snapshot</h3></div>
+                <div id="feed-main-container">
+                    {% set latest_feed = live_feed[0] if live_feed else None %}
+                    {% if latest_feed and latest_feed.image_path %}
+                    <img src="/static/{{ latest_feed.image_path }}" alt="Live Feed" class="main-snapshot" id="feed-main-img">
+                    {% else %}
+                    <div class="snapshot-placeholder-large" id="feed-main-placeholder">WAITING FOR FEED...</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent snapshots grid -->
+            <div class="card" style="margin-bottom:1.5rem;">
+                <div class="card-header"><h3>Recent Snapshots</h3></div>
+                <div class="live-feed-grid" id="feed-grid">
+                    {% if live_feed %}
+                        {% for img in live_feed[:4] %}
+                        <div class="card feed-card">
+                            {% if img.image_path %}
+                            <img src="/static/{{ img.image_path }}" alt="Snapshot">
+                            {% else %}
+                            <div class="feed-placeholder">SNAP</div>
+                            {% endif %}
+                            <div class="feed-info">
+                                <span>{{ img.caption or 'Snapshot' }}</span>
+                                <span style="color:var(--gray-400);font-size:0.8rem;">{{ ((now() - img.uploaded_at).total_seconds()|int) }}s ago</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color:var(--gray-400);text-align:center;padding:2rem;grid-column:1/-1;">No snapshots yet. Waiting for device feed...</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Snapshot history (collapsible) -->
+            <div class="card">
+                <div class="card-header" style="cursor:pointer;" onclick="toggleHistory()" id="history-header">
+                    <h3>Snapshot History <span id="history-count" style="font-weight:400;color:var(--gray-400);font-size:0.85rem;"></span></h3>
+                    <span id="history-chevron" style="transition:transform 0.2s;">&#9660;</span>
+                </div>
+                <div class="filmstrip" id="feed-filmstrip" style="display:none;">
+                    {% if live_feed and live_feed[4:16] %}
+                        {% for img in live_feed[4:16] %}
+                        {% if img.image_path %}
+                        <div class="filmstrip-item" title="{{ img.caption or 'Snapshot' }} — {{ ((now() - img.uploaded_at).total_seconds()|int) }}s ago" onclick="showFilmstripImage('/static/{{ img.image_path }}')">
+                            <img src="/static/{{ img.image_path }}" alt="Snapshot" loading="lazy">
+                            <span class="filmstrip-time">{{ ((now() - img.uploaded_at).total_seconds()|int) }}s</span>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <p style="color:var(--gray-400);padding:1rem;">No older snapshots yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== VITALS HISTORY TAB ========== -->
+        <div class="tab-panel" id="tab-vitals">
+            <h2 style="color:var(--pink-700);margin-bottom:1rem;">Vitals History</h2>
+            <div class="card" style="margin-bottom:1rem;">
+                <div class="card-header"><h3>SPO2 Over Time</h3></div>
+                <div class="chart-container"><canvas id="chart-spo2"></canvas></div>
+            </div>
+            <div class="card" style="margin-bottom:1rem;">
+                <div class="card-header"><h3>Heart Rate Over Time</h3></div>
+                <div class="chart-container"><canvas id="chart-hr"></canvas></div>
+            </div>
+            <div class="card" style="margin-bottom:1rem;">
+                <div class="card-header"><h3>Temperature Over Time</h3></div>
+                <div class="chart-container"><canvas id="chart-temp"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h3>Blood Pressure Over Time (SYS / DIA)</h3></div>
+                <div class="chart-container"><canvas id="chart-bp"></canvas></div>
+            </div>
+            <div class="last-updated" id="vitals-last-updated">
+                <span class="dot"></span> Charts rendered from historical data
+            </div>
+        </div>
+
+        <!-- ========== PREDICTION TAB ========== -->
+        <div class="tab-panel" id="tab-prediction">
+            <h2 style="color:var(--pink-700);margin-bottom:1rem;">ARIMA Predictions</h2>
+            <p style="color:var(--gray-400);margin-bottom:1rem;">
+                ARIMA-based forecast of the next data points for each vital sign.
+            </p>
+            <div class="prediction-grid" style="display:flex;flex-direction:column;gap:1.5rem;">
+                <div class="card">
+                    <div class="card-header"><h3>SPO2 Forecast</h3></div>
+                    <div class="chart-container-lg"><canvas id="chart-pred-spo2"></canvas></div>
+                    <div style="text-align:center;padding:0.25rem 0 0.5rem;font-size:0.8rem;color:var(--gray-400);" id="predSpo2-order"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h3>Heart Rate Forecast</h3></div>
+                    <div class="chart-container-lg"><canvas id="chart-pred-hr"></canvas></div>
+                    <div style="text-align:center;padding:0.25rem 0 0.5rem;font-size:0.8rem;color:var(--gray-400);" id="predHr-order"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h3>Temperature Forecast</h3></div>
+                    <div class="chart-container-lg"><canvas id="chart-pred-temp"></canvas></div>
+                    <div style="text-align:center;padding:0.25rem 0 0.5rem;font-size:0.8rem;color:var(--gray-400);" id="predTemp-order"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h3>Blood Pressure Forecast (SYS / DIA)</h3></div>
+                    <div class="chart-container-lg"><canvas id="chart-pred-bp"></canvas></div>
+                    <div style="text-align:center;padding:0.25rem 0 0.5rem;font-size:0.8rem;color:var(--gray-400);" id="predBp-order"></div>
+                </div>
+            </div>
+            <div class="last-updated" style="margin-top:1rem;">
+                <span class="dot"></span> Predictions updated on load
+            </div>
+        </div>
+
+
+        <!-- ========== NOTIFICATIONS TAB ========== -->
+        <div class="tab-panel" id="tab-notifications">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+                <h2 style="color:var(--pink-700);">Notifications</h2>
+                <button class="btn btn-outline btn-sm" onclick="markAllRead()">Mark All Read</button>
+            </div>
+            <div class="notif-list" id="notif-list">
+                {% for n in notifications %}
+                <div class="notif-item {{ 'unread' if not n.is_read else '' }} level-{{ n.level }}"
+                     data-id="{{ n.id }}" onclick="markRead({{ n.id }}, this)">
+                    <div class="notif-icon">
+                        {% if n.level == 'critical' %}[CRITICAL]{% elif n.level == 'warning' %}[WARNING]{% else %}[INFO]{% endif %}
+                    </div>
+                    <div class="notif-body">
+                        <div class="notif-title">{{ n.title }}</div>
+                        <div class="notif-msg">{{ n.message }}</div>
+                        <div class="notif-time">{{ n.created_at.strftime('%b %d, %Y at %H:%M') }}</div>
+                    </div>
+                </div>
+                {% else %}
+                <p style="color:var(--gray-400);text-align:center;padding:2rem;">No notifications yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ========== PROFILE TAB ========== -->
+        <div class="tab-panel" id="tab-profile">
+            <h2 style="color:var(--pink-700);margin-bottom:1rem;">Profile</h2>
+            <div class="card">
+                <div class="profile-grid">
+                    <div class="profile-field">
+                        <div class="pf-label">Patient ID</div>
+                        <div class="pf-value" style="font-weight:700;color:var(--pink-600);font-size:1.2rem;">{{ user.id }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="pf-label">Full Name</div>
+                        <div class="pf-value">{{ user.full_name }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="pf-label">Email</div>
+                        <div class="pf-value">{{ user.email }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="pf-label">Age <a href="#" onclick="editAge(event)" style="font-size:0.8rem;color:var(--pink-500);margin-left:8px;">(edit)</a></div>
+                        <div class="pf-value" id="profile-age-display">{{ user.age or '—' }}</div>
+                        <div id="profile-age-edit" style="display:none;">
+                            <input type="number" id="profile-age-input" value="{{ user.age or '' }}" min="1" max="120" style="width:80px;padding:4px 8px;border:2px solid var(--pink-300);border-radius:6px;">
+                            <button class="btn btn-pink btn-sm" onclick="saveAge()" style="margin-left:4px;">Save</button>
+                            <button class="btn btn-outline btn-sm" onclick="cancelEditAge()">Cancel</button>
+                        </div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="pf-label">Gender</div>
+                        <div class="pf-value">{{ user.gender or '—' }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="pf-label">Blood Type</div>
+                        <div class="pf-value">{{ user.blood_type or '—' }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="pf-label">Height / Weight</div>
+                        <div class="pf-value">{{ (user.height_cm|string + ' cm') if user.height_cm else '—' }} / {{ (user.weight_kg|string + ' kg') if user.weight_kg else '—' }}</div>
+                    </div>
+                    <div class="profile-field" style="grid-column:span 2;">
+                        <div class="pf-label">Medical Conditions</div>
+                        <div class="pf-value">{{ user.medical_conditions or 'None reported' }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="pf-label">Emergency Contact</div>
+                        <div class="pf-value">{{ user.emergency_contact_name or '—' }}</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="pf-label">Contact Phone</div>
+                        <div class="pf-value">{{ user.emergency_contact_phone or '—' }}</div>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top:1.5rem;">
+                <a href="/api/logout" class="btn btn-danger" style="text-decoration:none;">Logout</a>
+            </div>
+        </div>
+
+        <!-- ========== DEBUG TAB ========== -->
+        <div class="tab-panel" id="tab-debug">
+            <h2 style="color:var(--pink-700);margin-bottom:1rem;">Debug — ESP32 Alerts API</h2>
+            <p style="color:var(--gray-400);margin-bottom:1rem;">
+                Override the response of <code>GET /api/esp32/alerts/{{ user.id }}</code>
+            </p>
+
+            <!-- Quick Controls -->
+            <div class="card" style="margin-bottom:1.5rem;">
+                <div class="card-header"><h3>Quick Controls</h3></div>
+                <div style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                        <label>SMS Alert</label>
+                        <select id="debug-smsalert">
+                            <option value="false">Off</option>
+                            <option value="true">On</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>SMS Alert Message</label>
+                        <input type="text" id="debug-smsalertmsg" placeholder="e.g. Patient needs attention">
+                    </div>
+                    <div class="form-group">
+                        <label>Medicine Dispense</label>
+                        <input type="number" id="debug-meddispense" value="0" min="0" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label>LED Color</label>
+                        <select id="debug-led">
+                            <option value="">Auto (from SPO2)</option>
+                            <option value="green">Green</option>
+                            <option value="red">Red</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Alert Flag</label>
+                        <select id="debug-alert">
+                            <option value="">Auto (from SPO2)</option>
+                            <option value="true">Force ON</option>
+                            <option value="false">Force OFF</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>LCD3 Line</label>
+                        <input type="text" id="debug-lcd3" placeholder="Custom LCD3 text">
+                    </div>
+                    <button class="btn btn-pink" onclick="applyDebugOverrides()">Apply Overrides</button>
+                    <button class="btn btn-outline" style="margin-top:-0.5rem;" onclick="clearDebugOverrides()">Clear All Overrides</button>
+                </div>
+            </div>
+
+            <!-- Current Response Preview -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Current API Response</h3>
+                    <button class="btn btn-sm btn-outline" onclick="refreshDebugPreview()">Refresh</button>
+                </div>
+                <pre id="debug-preview" style="background:var(--gray-50);padding:1rem;border-radius:8px;overflow-x:auto;font-size:0.85rem;max-height:400px;overflow-y:auto;">Click Refresh to load...</pre>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- Pass server data to JS -->
+<script>
+window.__VITALS_HISTORY = {{ vitals_history | tojson | safe }};
+window.__USER_ID = {{ user.id }};
+</script>
+<script src="/static/js/dashboard.js"></script>
+
+{% endblock %}

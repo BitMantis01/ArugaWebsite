@@ -1,0 +1,31 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Secret & Environment files
+.env
+.env.*
+!.env.example
+
+# Local SQLite Database
+*.db
+aruga.db
+
+# Dynamic User Uploads & Media
+static/uploads/live_feed/
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Operating System & IDE junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

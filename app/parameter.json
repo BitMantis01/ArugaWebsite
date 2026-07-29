@@ -1,0 +1,419 @@
+{
+  "vital_thresholds": [
+    {
+      "id": "infant",
+      "age_group": "Infant",
+      "age_range": {
+        "unit": "months",
+        "min": 0,
+        "max": 12
+      },
+      "sbp_mmHg": {
+        "critical_low": { "operator": "<", "value": 60 },
+        "at_risk_low": { "min": 60, "max": 69 },
+        "normal": { "min": 70, "max": 100 },
+        "at_risk_high": { "min": 101, "max": 110 },
+        "critical_high": { "operator": ">", "value": 110 }
+      },
+      "dbp_mmHg": {
+        "critical_low": { "operator": "<", "value": 35 },
+        "at_risk_low": { "min": 35, "max": 44 },
+        "normal": { "min": 45, "max": 65 },
+        "at_risk_high": { "min": 66, "max": 75 },
+        "critical_high": { "operator": ">", "value": 75 }
+      },
+      "heart_rate_bpm": {
+        "critical_low": { "operator": "<", "value": 80 },
+        "at_risk_low": { "min": 80, "max": 99 },
+        "normal": { "min": 100, "max": 160 },
+        "at_risk_high": { "min": 161, "max": 180 },
+        "critical_high": { "operator": ">", "value": 180 }
+      },
+      "respiratory_rate_bpm": {
+        "critical_low": { "operator": "<", "value": 20 },
+        "at_risk_low": { "min": 20, "max": 29 },
+        "normal": { "min": 30, "max": 55 },
+        "at_risk_high": { "min": 56, "max": 60 },
+        "critical_high": { "operator": ">", "value": 60 }
+      },
+      "spo2_percent": {
+        "critical_low": { "operator": "<", "value": 92 },
+        "at_risk_low": { "min": 92, "max": 94 },
+        "normal": { "min": 95, "max": 100 }
+      },
+      "temperature": {
+        "fahrenheit": {
+          "critical_low": { "operator": "<", "value": 97.0 },
+          "at_risk_low": { "min": 97.0, "max": 97.8 },
+          "normal": { "min": 97.9, "max": 99.5 },
+          "at_risk_high": { "min": 99.6, "max": 100.3 },
+          "critical_high": [
+            { "condition": "< 3 mos", "operator": ">=", "value": 100.4 },
+            { "condition": "3-6 mos", "operator": ">=", "value": 102.0 }
+          ]
+        },
+        "celsius": {
+          "critical_low": { "operator": "<", "value": 36.1 },
+          "at_risk_low": { "min": 36.1, "max": 36.5 },
+          "normal": { "min": 36.6, "max": 37.5 },
+          "at_risk_high": { "min": 37.6, "max": 37.9 },
+          "critical_high": [
+            { "condition": "< 3 mos", "operator": ">=", "value": 38.0 },
+            { "condition": "3-6 mos", "operator": ">=", "value": 38.9 }
+          ]
+        }
+      }
+    },
+    {
+      "id": "toddler",
+      "age_group": "Toddler",
+      "age_range": {
+        "unit": "years",
+        "min": 1,
+        "max": 3
+      },
+      "sbp_mmHg": {
+        "critical_low": { "operator": "<", "value": 75 },
+        "at_risk_low": { "min": 75, "max": 84 },
+        "normal": { "min": 85, "max": 105 },
+        "at_risk_high": { "min": 106, "max": 115 },
+        "critical_high": { "operator": ">", "value": 115 }
+      },
+      "dbp_mmHg": {
+        "critical_low": { "operator": "<", "value": 40 },
+        "at_risk_low": { "min": 40, "max": 49 },
+        "normal": { "min": 50, "max": 70 },
+        "at_risk_high": { "min": 71, "max": 80 },
+        "critical_high": { "operator": ">", "value": 80 }
+      },
+      "heart_rate_bpm": {
+        "critical_low": { "operator": "<", "value": 80 },
+        "at_risk_low": { "min": 80, "max": 89 },
+        "normal": { "min": 90, "max": 140 },
+        "at_risk_high": { "min": 141, "max": 150 },
+        "critical_high": { "operator": ">", "value": 150 }
+      },
+      "respiratory_rate_bpm": {
+        "critical_low": { "operator": "<", "value": 15 },
+        "at_risk_low": { "min": 15, "max": 19 },
+        "normal": { "min": 20, "max": 30 },
+        "at_risk_high": { "min": 31, "max": 40 },
+        "critical_high": { "operator": ">", "value": 40 }
+      },
+      "spo2_percent": {
+        "critical_low": { "operator": "<", "value": 92 },
+        "at_risk_low": { "min": 92, "max": 94 },
+        "normal": { "min": 95, "max": 100 }
+      },
+      "temperature": {
+        "fahrenheit": {
+          "critical_low": { "operator": "<", "value": 97.0 },
+          "at_risk_low": { "min": 97.0, "max": 97.8 },
+          "normal": { "min": 97.9, "max": 99.0 },
+          "at_risk_high": { "min": 99.1, "max": 102.1 },
+          "critical_high": { "operator": ">=", "value": 102.2 }
+        },
+        "celsius": {
+          "critical_low": { "operator": "<", "value": 36.1 },
+          "at_risk_low": { "min": 36.1, "max": 36.5 },
+          "normal": { "min": 36.6, "max": 37.2 },
+          "at_risk_high": { "min": 37.3, "max": 38.9 },
+          "critical_high": { "operator": ">=", "value": 39.0 }
+        }
+      }
+    },
+    {
+      "id": "child",
+      "age_group": "Child",
+      "age_range": {
+        "unit": "years",
+        "min": 4,
+        "max": 11
+      },
+      "sbp_mmHg": {
+        "critical_low": { "operator": "<", "value": 80 },
+        "at_risk_low": { "min": 80, "max": 94 },
+        "normal": { "min": 95, "max": 115 },
+        "at_risk_high": { "min": 116, "max": 125 },
+        "critical_high": { "operator": ">", "value": 125 }
+      },
+      "dbp_mmHg": {
+        "critical_low": { "operator": "<", "value": 50 },
+        "at_risk_low": { "min": 50, "max": 59 },
+        "normal": { "min": 60, "max": 75 },
+        "at_risk_high": { "min": 76, "max": 85 },
+        "critical_high": { "operator": ">", "value": 85 }
+      },
+      "heart_rate_bpm": {
+        "critical_low": { "operator": "<", "value": 60 },
+        "at_risk_low": { "min": 60, "max": 69 },
+        "normal": { "min": 70, "max": 110 },
+        "at_risk_high": { "min": 111, "max": 130 },
+        "critical_high": { "operator": ">", "value": 130 }
+      },
+      "respiratory_rate_bpm": {
+        "critical_low": { "operator": "<", "value": 10 },
+        "at_risk_low": { "min": 10, "max": 15 },
+        "normal": { "min": 16, "max": 22 },
+        "at_risk_high": { "min": 23, "max": 35 },
+        "critical_high": { "operator": ">", "value": 35 }
+      },
+      "spo2_percent": {
+        "critical_low": { "operator": "<", "value": 92 },
+        "at_risk_low": { "min": 92, "max": 94 },
+        "normal": { "min": 95, "max": 100 }
+      },
+      "temperature": {
+        "fahrenheit": {
+          "critical_low": { "operator": "<", "value": 96.5 },
+          "at_risk_low": { "min": 96.5, "max": 97.6 },
+          "normal": { "min": 97.7, "max": 99.0 },
+          "at_risk_high": { "min": 99.1, "max": 102.9 },
+          "critical_high": { "operator": ">=", "value": 103.0 }
+        },
+        "celsius": {
+          "critical_low": { "operator": "<", "value": 35.8 },
+          "at_risk_low": { "min": 35.8, "max": 36.4 },
+          "normal": { "min": 36.5, "max": 37.2 },
+          "at_risk_high": { "min": 37.3, "max": 39.4 },
+          "critical_high": { "operator": ">=", "value": 39.4 }
+        }
+      }
+    },
+    {
+      "id": "adolescent",
+      "age_group": "Adolescent",
+      "age_range": {
+        "unit": "years",
+        "min": 12,
+        "max": 17
+      },
+      "sbp_mmHg": {
+        "critical_low": { "operator": "<", "value": 90 },
+        "at_risk_low": { "min": 90, "max": 99 },
+        "normal": { "min": 100, "max": 120 },
+        "at_risk_high": { "min": 121, "max": 139 },
+        "critical_high": { "operator": ">=", "value": 140 }
+      },
+      "dbp_mmHg": {
+        "critical_low": { "operator": "<", "value": 55 },
+        "at_risk_low": { "min": 55, "max": 64 },
+        "normal": { "min": 65, "max": 80 },
+        "at_risk_high": { "min": 81, "max": 89 },
+        "critical_high": { "operator": ">=", "value": 90 }
+      },
+      "heart_rate_bpm": {
+        "critical_low": { "operator": "<", "value": 50 },
+        "at_risk_low": { "min": 50, "max": 59 },
+        "normal": { "min": 60, "max": 100 },
+        "at_risk_high": { "min": 101, "max": 120 },
+        "critical_high": { "operator": ">", "value": 120 }
+      },
+      "respiratory_rate_bpm": {
+        "critical_low": { "operator": "<", "value": 10 },
+        "at_risk_low": { "min": 10, "max": 11 },
+        "normal": { "min": 12, "max": 18 },
+        "at_risk_high": { "min": 19, "max": 24 },
+        "critical_high": { "operator": ">", "value": 24 }
+      },
+      "spo2_percent": {
+        "critical_low": { "operator": "<", "value": 92 },
+        "at_risk_low": { "min": 92, "max": 94 },
+        "normal": { "min": 95, "max": 100 }
+      },
+      "temperature": {
+        "fahrenheit": {
+          "critical_low": { "operator": "<", "value": 95.0 },
+          "at_risk_low": { "min": 95.1, "max": 97.4 },
+          "normal": { "min": 97.5, "max": 98.8 },
+          "at_risk_high": { "min": 98.9, "max": 100.3 },
+          "critical_high": { "operator": ">=", "value": 100.4 }
+        },
+        "celsius": {
+          "critical_low": { "operator": "<", "value": 35.0 },
+          "at_risk_low": { "min": 35.1, "max": 36.3 },
+          "normal": { "min": 36.4, "max": 37.1 },
+          "at_risk_high": { "min": 37.2, "max": 37.9 },
+          "critical_high": { "operator": ">=", "value": 38.0 }
+        }
+      }
+    },
+    {
+      "id": "young_middle_adult",
+      "age_group": "Young / Middle Adult",
+      "age_range": {
+        "unit": "years",
+        "min": 18,
+        "max": 64
+      },
+      "sbp_mmHg": {
+        "critical_low": { "operator": "<=", "value": 90 },
+        "at_risk_low": { "min": 91, "max": 100 },
+        "normal": { "operator": "<", "value": 120 },
+        "at_risk_high": { "min": 120, "max": 139 },
+        "critical_high": { "operator": ">=", "value": 140 },
+        "crisis_high": { "operator": ">=", "value": 180 }
+      },
+      "dbp_mmHg": {
+        "critical_low": { "operator": "<", "value": 50 },
+        "at_risk_low": { "min": 50, "max": 59 },
+        "normal": { "operator": "<", "value": 80 },
+        "at_risk_high": { "min": 80, "max": 89 },
+        "critical_high": { "operator": ">=", "value": 90 },
+        "crisis_high": { "operator": ">=", "value": 120 }
+      },
+      "heart_rate_bpm": {
+        "critical_low": { "operator": "<=", "value": 40 },
+        "at_risk_low": { "min": 41, "max": 50 },
+        "normal": { "min": 60, "max": 100 },
+        "at_risk_high": { "min": 101, "max": 130 },
+        "critical_high": { "operator": ">=", "value": 131 }
+      },
+      "respiratory_rate_bpm": {
+        "critical_low": { "operator": "<=", "value": 8 },
+        "at_risk_low": { "min": 9, "max": 11 },
+        "normal": { "min": 12, "max": 18 },
+        "at_risk_high": { "min": 19, "max": 24 },
+        "critical_high": { "operator": ">=", "value": 25 }
+      },
+      "spo2_percent": {
+        "critical_low": { "operator": "<=", "value": 91 },
+        "at_risk_low": { "min": 92, "max": 94 },
+        "normal": { "min": 95, "max": 100 }
+      },
+      "temperature": {
+        "fahrenheit": {
+          "critical_low": { "operator": "<=", "value": 95.0 },
+          "at_risk_low": { "min": 95.1, "max": 97.7 },
+          "normal": { "min": 97.8, "max": 99.1 },
+          "at_risk_high": { "min": 99.2, "max": 102.2 },
+          "critical_high": { "operator": ">=", "value": 102.3 }
+        },
+        "celsius": {
+          "critical_low": { "operator": "<=", "value": 35.0 },
+          "at_risk_low": { "min": 35.1, "max": 36.5 },
+          "normal": { "min": 36.6, "max": 37.3 },
+          "at_risk_high": { "min": 37.4, "max": 39.0 },
+          "critical_high": { "operator": ">=", "value": 39.1 }
+        }
+      }
+    },
+    {
+      "id": "senior_young_old",
+      "age_group": "Senior (Young-Old)",
+      "age_range": {
+        "unit": "years",
+        "min": 65,
+        "max": 74
+      },
+      "sbp_mmHg": {
+        "critical_low": { "operator": "<=", "value": 90 },
+        "at_risk_low": { "min": 91, "max": 119 },
+        "normal": { "min": 120, "max": 129 },
+        "at_risk_high": { "min": 130, "max": 159 },
+        "critical_high": { "operator": ">=", "value": 160 }
+      },
+      "dbp_mmHg": {
+        "critical_low": { "operator": "<", "value": 50 },
+        "at_risk_low": { "min": 50, "max": 59 },
+        "normal": { "operator": "<", "value": 80 },
+        "at_risk_high": { "min": 80, "max": 89 },
+        "critical_high": { "operator": ">=", "value": 90 }
+      },
+      "heart_rate_bpm": {
+        "critical_low": { "operator": "<=", "value": 40 },
+        "at_risk_low": { "min": 41, "max": 59 },
+        "normal": { "min": 60, "max": 90 },
+        "at_risk_high": { "min": 91, "max": 119 },
+        "critical_high": { "operator": ">=", "value": 120 }
+      },
+      "respiratory_rate_bpm": {
+        "critical_low": { "operator": "<=", "value": 8 },
+        "at_risk_low": { "min": 9, "max": 11 },
+        "normal": { "min": 12, "max": 18 },
+        "at_risk_high": { "min": 19, "max": 24 },
+        "critical_high": { "operator": ">=", "value": 25 }
+      },
+      "spo2_percent": {
+        "critical_low": { "operator": "<", "value": 90 },
+        "at_risk_low": { "min": 92, "max": 94 },
+        "normal": { "min": 95, "max": 98 }
+      },
+      "temperature": {
+        "fahrenheit": {
+          "critical_low": { "operator": "<=", "value": 95.0 },
+          "at_risk_low": { "min": 95.1, "max": 96.7 },
+          "normal": { "min": 96.8, "max": 98.6 },
+          "at_risk_high": { "min": 98.7, "max": 100.4 },
+          "critical_high": { "operator": ">=", "value": 100.5 }
+        },
+        "celsius": {
+          "critical_low": { "operator": "<=", "value": 35.0 },
+          "at_risk_low": { "min": 35.1, "max": 35.9 },
+          "normal": { "min": 36.0, "max": 37.0 },
+          "at_risk_high": { "min": 37.1, "max": 38.0 },
+          "critical_high": { "operator": ">=", "value": 38.1 }
+        }
+      }
+    },
+    {
+      "id": "senior_oldest_old",
+      "age_group": "Senior (Oldest-Old)",
+      "age_range": {
+        "unit": "years",
+        "min": 85,
+        "max": null
+      },
+      "sbp_mmHg": {
+        "critical_low": { "operator": "<=", "value": 90 },
+        "critical_event_low": { "operator": "<", "value": 80 },
+        "at_risk_low": { "min": 100, "max": 129 },
+        "normal": { "min": 130, "max": 139 },
+        "at_risk_high": { "min": 140, "max": 159 },
+        "critical_high": { "operator": ">=", "value": 160 }
+      },
+      "dbp_mmHg": {
+        "critical_low": { "operator": "<", "value": 50 },
+        "at_risk_low": { "min": 50, "max": 59 },
+        "normal": { "operator": "<", "value": 80 },
+        "at_risk_high": { "min": 80, "max": 89 },
+        "critical_high": { "operator": ">=", "value": 90 }
+      },
+      "heart_rate_bpm": {
+        "critical_low": { "operator": "<=", "value": 40 },
+        "at_risk_low": { "min": 41, "max": 54 },
+        "normal": { "min": 55, "max": 85 },
+        "at_risk_high": { "min": 86, "max": 110 },
+        "critical_high": { "operator": ">=", "value": 111 }
+      },
+      "respiratory_rate_bpm": {
+        "critical_low": { "operator": "<=", "value": 8 },
+        "at_risk_low": { "min": 9, "max": 13 },
+        "normal": { "min": 14, "max": 20 },
+        "at_risk_high": { "min": 21, "max": 24 },
+        "critical_high": { "operator": ">=", "value": 25 }
+      },
+      "spo2_percent": {
+        "critical_low": { "operator": "<", "value": 90 },
+        "at_risk_low": { "min": 90, "max": 93 },
+        "normal": { "min": 94, "max": 97 }
+      },
+      "temperature": {
+        "fahrenheit": {
+          "critical_low": { "operator": "<=", "value": 94.0 },
+          "at_risk_low": { "min": 94.5, "max": 95.9 },
+          "normal": { "min": 96.0, "max": 97.5 },
+          "at_risk_high": { "min": 97.6, "max": 99.4 },
+          "critical_high": { "operator": ">=", "value": 99.5 }
+        },
+        "celsius": {
+          "critical_low": { "operator": "<=", "value": 34.4 },
+          "at_risk_low": { "min": 34.7, "max": 35.5 },
+          "normal": { "min": 35.6, "max": 36.4 },
+          "at_risk_high": { "min": 36.5, "max": 37.4 },
+          "critical_high": { "operator": ">=", "value": 37.5 }
+        }
+      }
+    }
+  ]
+}

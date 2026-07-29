@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}ARUGA - Intelligent Assistive Companion Robot{% endblock %}
+{% block body %}
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="logo-area">
+        <img src="/static/images/logo.svg" alt="ARUGA Logo" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23f4a4b5%22 width=%22100%22 height=%22100%22 rx=%2220%22/><text x=%2250%22 y=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22 font-weight=%22bold%22>A</text></svg>'">
+        <span>ARUGA</span>
+    </div>
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/login">Login</a>
+        <a href="/signup" class="btn btn-pink btn-sm">Get Started</a>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <img src="/static/images/logo.svg" alt="ARUGA Logo" class="hero-logo"
+         onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23f4a4b5%22 width=%22100%22 height=%22100%22 rx=%2220%22/><text x=%2250%22 y=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22 font-weight=%22bold%22>A</text></svg>'">
+    <h1>ARUGA</h1>
+    <p class="tagline">
+        An Intelligent Assistive Companion Robot &amp; Real-Time Health Analytics Platform
+    </p>
+    <p style="color:var(--gray-600);max-width:700px;margin:0.5rem auto 1.5rem;">
+        Empowering older adults and individuals living alone with continuous vital sign tracking,
+        predictive ARIMA analytics, automated medication dispensing, and immediate caregiver alerts.
+    </p>
+    <div style="display:flex;gap:1rem;justify-content:center;">
+        <a href="/signup" class="btn btn-pink">Get Started</a>
+        <a href="/login" class="btn btn-outline">Sign In</a>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+    <div class="card feature-card">
+        <div class="icon"><i class="fa-solid fa-heart-pulse"></i></div>
+        <h4>Comprehensive Vital Signs Tracking</h4>
+        <p>Monitors Heart Rate, Blood Oxygen Saturation (SpO<sub>2</sub>), Body Temperature, Blood Pressure,
+        and estimated Respiratory Rate using non-invasive sensors.</p>
+    </div>
+    <div class="card feature-card">
+        <div class="icon"><i class="fa-solid fa-chart-line"></i></div>
+        <h4>ARIMA Predictive Health Trends</h4>
+        <p>Leverages Autoregressive Integrated Moving Average (ARIMA) time-series forecasting
+        on historical health records to predict vital sign trends and give early warnings
+        before health deteriorates.</p>
+    </div>
+    <div class="card feature-card">
+        <div class="icon"><i class="fa-solid fa-video"></i></div>
+        <h4>Live Feed &amp; Visual Monitoring</h4>
+        <p>Integrated ESP32-CAM streams live snapshots to help remote caregivers observe
+        the user's environment in real-time.</p>
+    </div>
+    <div class="card feature-card">
+        <div class="icon"><i class="fa-solid fa-capsules"></i></div>
+        <h4>Smart Automated Medicine Dispenser</h4>
+        <p>Combines a Real-Time Clock (RTC) module and servo motors to sound reminders
+        and automatically dispense prescribed medications at exact scheduled times.</p>
+    </div>
+    <div class="card feature-card">
+        <div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h4>Green-Red Risk Assessment &amp; SMS Alerts</h4>
+        <p>Categorizes physiological condition using an intuitive Green (Normal) vs. Red (Critical)
+        status. Automatically dispatches immediate emergency SMS alerts via GSM to family
+        or caregivers during critical health events.</p>
+    </div>
+    <div class="card feature-card">
+        <div class="icon"><i class="fa-solid fa-database"></i></div>
+        <h4>Research-Grade Data Logging</h4>
+        <p>Stores and logs continuous physiological data for historical analysis, medical
+        consultations, and academic research in IoT preventive healthcare.</p>
+    </div>
+</section>
+
+<!-- ABOUT SECTION -->
+<section style="max-width:900px;margin:0 auto 3rem;padding:0 2rem;text-align:center;">
+    <div class="card" style="padding:2.5rem;">
+        <h2 style="color:var(--pink-700);margin-bottom:1rem;">About Project ARUGA</h2>
+        <p style="color:var(--gray-600);line-height:1.8;">
+            <strong>ARUGA</strong> &mdash; <em>Development of an Intelligent Preventive Healthcare System
+            with Smart Medication Dispensing, Continuous Vital Sign Monitoring, and Early Health Warning</em>
+            &mdash; is a research initiative developed at <strong>Muntinlupa National High School (STEM Strand)</strong>.
+        </p>
+        <p style="color:var(--gray-600);line-height:1.8;margin-top:1rem;">
+            As the number of older adults living independently grows, many face challenges in tracking
+            chronic conditions, remembering complex medication routines, and recognizing early health
+            shifts. ARUGA solves this by combining an <strong>IoT-based assistive companion robot</strong>,
+            a wearable sensor wristband, and machine learning analytics into a single affordable ecosystem.
+        </p>
+        <p style="color:var(--gray-600);line-height:1.8;margin-top:1rem;">
+            By analyzing continuous physiological data with <strong>ARIMA time-series forecasting</strong>,
+            ARUGA moves healthcare from reactive treatment to proactive prevention&mdash;detecting subtle
+            physiological changes before they turn into critical emergencies.
+        </p>
+        <p style="color:var(--gray-600);line-height:1.8;margin-top:1rem;">
+            This platform and prototype are currently under active development. We welcome collaboration
+            from healthcare professionals, data scientists, and robotics engineers interested in advancing
+            smart, independent healthcare.
+        </p>
+    </div>
+</section>
+
+<!-- SYSTEM ARCHITECTURE -->
+<section style="max-width:900px;margin:0 auto 1rem;padding:0 2rem;text-align:center;">
+    <div class="card" style="padding:2.5rem;">
+        <h2 style="color:var(--pink-700);margin-bottom:1rem;">How ARUGA Works</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;text-align:left;">
+            <div>
+                <div style="font-size:1.5rem;color:var(--pink-500);margin-bottom:0.5rem;"><i class="fa-solid fa-hand"></i></div>
+                <h4 style="color:var(--pink-600);margin-bottom:0.5rem;">Wearable Wristband Unit</h4>
+                <p style="color:var(--gray-600);font-size:0.9rem;">Powered by an ESP32 micro-controller,
+                incorporating MAX30102 light sensors and temperature modules for non-invasive health tracking.</p>
+            </div>
+            <div>
+                <div style="font-size:1.5rem;color:var(--pink-500);margin-bottom:0.5rem;"><i class="fa-solid fa-robot"></i></div>
+                <h4 style="color:var(--pink-600);margin-bottom:0.5rem;">Companion Robot Base</h4>
+                <p style="color:var(--gray-600);font-size:0.9rem;">Driven by an Arduino Mega 2560 managing
+                the physical medicine dispenser, LCD display, local buzzers, and ESP32-CAM.</p>
+            </div>
+            <div>
+                <div style="font-size:1.5rem;color:var(--pink-500);margin-bottom:0.5rem;"><i class="fa-solid fa-signal"></i></div>
+                <h4 style="color:var(--pink-600);margin-bottom:0.5rem;">GSM Emergency Gateway</h4>
+                <p style="color:var(--gray-600);font-size:0.9rem;">Uses a SIM800L module to ensure critical
+                alerts reach caregivers instantly via SMS, even without active home internet.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+    <p>&copy; 2026 ARUGA Research Project. All rights reserved. | Muntinlupa National High School - STEM | Intelligent Preventive Healthcare</p>
+</footer>
+
+{% endblock %}

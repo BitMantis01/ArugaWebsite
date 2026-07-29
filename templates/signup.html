@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Sign Up — ARUGA{% endblock %}
+{% block body %}
+
+<nav class="navbar">
+    <div class="logo-area">
+        <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
+            <img src="/static/images/logo.svg" alt="Logo" width="40" height="40" style="border-radius:8px;"
+                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23f4a4b5%22 width=%22100%22 height=%22100%22 rx=%2220%22/><text x=%2250%22 y=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>A</text></svg>'">
+            <span>ARUGA</span>
+        </a>
+    </div>
+</nav>
+
+<div class="auth-container">
+    <div class="card">
+        <h2>Create Account</h2>
+        <p class="subtitle">Join the ARUGA research platform</p>
+
+        <div id="signup-error" style="display:none;background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;margin-bottom:1rem;font-size:0.9rem;"></div>
+
+        <form id="signup-form" method="POST" action="/api/signup">
+            <div class="form-group">
+                <label for="full_name">Full Name *</label>
+                <input type="text" id="full_name" name="full_name" placeholder="Dr. Juan Dela Cruz" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email Address *</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password *</label>
+                <input type="password" id="password" name="password" placeholder="Min. 6 characters" required minlength="6">
+            </div>
+
+            <hr style="border-color:var(--pink-100);margin:1.5rem 0;">
+
+            <p style="font-weight:600;color:var(--pink-700);margin-bottom:1rem;">Personal Information</p>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="age">Age</label>
+                    <input type="number" id="age" name="age" placeholder="e.g. 34" min="0" max="150">
+                </div>
+                <div class="form-group">
+                    <label for="gender">Gender</label>
+                    <select id="gender" name="gender">
+                        <option value="">Prefer not to say</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="blood_type">Blood Type</label>
+                    <select id="blood_type" name="blood_type">
+                        <option value="">Unknown</option>
+                        <option value="A+">A+</option><option value="A-">A-</option>
+                        <option value="B+">B+</option><option value="B-">B-</option>
+                        <option value="AB+">AB+</option><option value="AB-">AB-</option>
+                        <option value="O+">O+</option><option value="O-">O-</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="height_cm">Height (cm)</label>
+                    <input type="number" id="height_cm" name="height_cm" placeholder="e.g. 165" step="0.1" min="0">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="weight_kg">Weight (kg)</label>
+                <input type="number" id="weight_kg" name="weight_kg" placeholder="e.g. 62" step="0.1" min="0">
+            </div>
+
+            <div class="form-group">
+                <label for="medical_conditions">Medical Conditions</label>
+                <textarea id="medical_conditions" name="medical_conditions" rows="2" placeholder="Any pre-existing conditions, allergies, etc."></textarea>
+            </div>
+
+            <hr style="border-color:var(--pink-100);margin:1.5rem 0;">
+
+            <p style="font-weight:600;color:var(--pink-700);margin-bottom:1rem;">Emergency Contact</p>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="emergency_contact_name">Contact Name</label>
+                    <input type="text" id="emergency_contact_name" name="emergency_contact_name" placeholder="Full name">
+                </div>
+                <div class="form-group">
+                    <label for="emergency_contact_phone">Contact Phone</label>
+                    <input type="text" id="emergency_contact_phone" name="emergency_contact_phone" placeholder="+63-9XX-XXX-XXXX">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-pink" style="width:100%;margin-top:0.5rem;">Create Account</button>
+        </form>
+
+        <p style="text-align:center;margin-top:1.5rem;font-size:0.9rem;color:var(--gray-400);">
+            Already have an account? <a href="/login">Sign in</a>
+        </p>
+    </div>
+</div>
+
+<script>
+document.getElementById('signup-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const err = document.getElementById('signup-error');
+    err.style.display = 'none';
+
+    try {
+        const resp = await fetch('/api/signup', { method: 'POST', body: formData });
+        const data = await resp.json();
+
+        if (resp.ok && data.status === 'ok') {
+            window.location.href = '/dashboard';
+        } else {
+            err.textContent = data.detail || data.message || 'Signup failed';
+            err.style.display = 'block';
+        }
+    } catch (error) {
+        err.textContent = 'An unexpected error occurred. Please try again.';
+        err.style.display = 'block';
+    }
+});
+</script>
+
+
+{% endblock %}
