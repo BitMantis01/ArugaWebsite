@@ -124,6 +124,7 @@ async def api_esp32_alerts(
     if not user:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
 
+    # Query latest overall record for sensor_error status
     latest = (
         db.query(VitalRecord)
         .filter(VitalRecord.user_id == patient_id)
@@ -131,73 +132,75 @@ async def api_esp32_alerts(
         .first()
     )
 
-    latest_notif = (
-        db.query(Notification)
-        .filter(Notification.user_id == patient_id, Notification.level.in_(["critical", "warning"]))
-        .order_by(Notification.created_at.desc())
+    # Query newest known valid data record (error-free with readings)
+    latest_valid = (
+        db.query(VitalRecord)
+        .filter(
+            VitalRecord.user_id == patient_id,
+            VitalRecord.sensor_error == False,
+            (VitalRecord.heart_rate.isnot(None)) | (VitalRecord.spo2.isnot(None)) | (VitalRecord.temperature.isnot(None))
+        )
+        .order_by(VitalRecord.recorded_at.desc())
         .first()
     )
 
-    now = datetime.utcnow()
+    # Use newest valid record if available; otherwise fall back to latest overall
+    target_rec = latest_valid or latest
 
-    if latest:
-        hr = latest.heart_rate
-        spo2_val = latest.spo2
-        temp_val = latest.temperature
-        sys_bp = latest.systolic_bp
-        dia_bp = latest.diastolic_bp
-        sensor_error = latest.sensor_error
+    if target_rec:
+        hr = target_rec.heart_rate
+        spo2_val = target_rec.spo2
+        temp_val = target_rec.temperature
+        sys_bp = target_rec.systolic_bp
+        dia_bp = target_rec.diastolic_bp
+        rec_time = target_rec.recorded_at
     else:
         hr = spo2_val = temp_val = sys_bp = dia_bp = None
-        sensor_error = False
+        rec_time = datetime.utcnow()
 
-    lcd_hr, lcd_spo2, lcd_temp, lcd_sys, lcd_dia = hr, spo2_val, temp_val, sys_bp, dia_bp
-    last_good = None
+    sensor_error = latest.sensor_error if latest else False
 
-    if sensor_error and (hr is None and spo2_val is None):
-        last_good = (
+    # If BP is missing from target_rec, fetch newest known valid BP reading
+    if sys_bp is None or dia_bp is None:
+        bp_rec = (
             db.query(VitalRecord)
             .filter(
                 VitalRecord.user_id == patient_id,
                 VitalRecord.sensor_error == False,
-                VitalRecord.heart_rate.isnot(None),
+                VitalRecord.systolic_bp.isnot(None)
             )
             .order_by(VitalRecord.recorded_at.desc())
             .first()
         )
-        if last_good:
-            lcd_hr = last_good.heart_rate
-            lcd_spo2 = last_good.spo2
-            lcd_temp = last_good.temperature
-            lcd_sys = last_good.systolic_bp
-            lcd_dia = last_good.diastolic_bp
+        if bp_rec:
+            sys_bp = bp_rec.systolic_bp
+            dia_bp = bp_rec.diastolic_bp
 
+    # Format LCD lines showing newest known data
     lcd1_parts = []
-    if lcd_hr is not None:
-        lcd1_parts.append(f"HR: {int(lcd_hr)}")
-    if lcd_spo2 is not None:
-        lcd1_parts.append(f"SpO2: {int(lcd_spo2)}%")
-    lcd1 = " | ".join(lcd1_parts) if lcd1_parts else "Waiting..."
+    if hr is not None:
+        lcd1_parts.append(f"HR: {int(hr)}")
+    if spo2_val is not None:
+        lcd1_parts.append(f"SpO2: {int(spo2_val)}%")
+    lcd1 = " | ".join(lcd1_parts) if lcd1_parts else ""
 
     lcd2_parts = []
-    if lcd_temp is not None:
-        lcd2_parts.append(f"Temp: {float(lcd_temp):.1f}C")
-    lcd2 = " | ".join(lcd2_parts) if lcd2_parts else "for data..."
+    if temp_val is not None:
+        lcd2_parts.append(f"Temp: {float(temp_val):.1f}C")
+    lcd2 = " | ".join(lcd2_parts) if lcd2_parts else ""
 
-    lcd3_parts = []
-    if lcd_sys is not None and lcd_dia is not None:
-        lcd3_parts.append(f"BP: {int(lcd_sys)}/{int(lcd_dia)}")
-    elif lcd_sys is not None:
-        lcd3_parts.append(f"BP: {int(lcd_sys)}/-")
-    lcd3 = " | ".join(lcd3_parts) if lcd3_parts else (latest_notif.message[:20] if latest_notif else "")
-
-    if sensor_error and (hr is None and spo2_val is None) and last_good and last_good.recorded_at:
-        lcd4_time = last_good.recorded_at + timedelta(hours=8)
-    elif latest and latest.recorded_at:
-        lcd4_time = latest.recorded_at + timedelta(hours=8)
+    if sys_bp is not None and dia_bp is not None:
+        lcd3 = f"BP: {int(sys_bp)}/{int(dia_bp)}"
+    elif sys_bp is not None:
+        lcd3 = f"BP: {int(sys_bp)}/-"
     else:
-        lcd4_time = now + timedelta(hours=8)
+        lcd3 = "BP: --/--"
+
+
+    # Line 4: GMT+8 recorded timestamp of the newest known data displayed
+    lcd4_time = (rec_time + timedelta(hours=8)) if rec_time else (datetime.utcnow() + timedelta(hours=8))
     lcd4 = lcd4_time.strftime("%Y-%m-%d %H:%M:%S")
+
 
     led, is_alert, alert_reasons = check_vitals_alert(
         user.age, hr, spo2_val, temp_val, sys_bp, dia_bp, sensor_error=sensor_error
@@ -251,7 +254,8 @@ async def api_esp32_alerts(
         "smsalertmsg": final_smsalertmsg,
         "medicinedispense": final_meddispense,
         "move": final_move,
-        "timestamp": (now + timedelta(hours=8)).isoformat(),
+        "timestamp": now_gmt8.isoformat(),
+
         "spo2": spo2_val,
         "heartrate": hr,
         "temp": temp_val,
