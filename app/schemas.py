@@ -54,3 +54,13 @@ class DebugOverridePayload(BaseModel):
     led: Optional[str] = None
     lcd3: Optional[str] = None
     alert: Optional[bool] = None
+
+
+class MedicineSlotUpdate(BaseModel):
+    slot_number: int  # 1 to 7
+    name: Optional[str] = "Empty Slot"
+    dosage: Optional[str] = ""
+    scheduled_datetime: Optional[str] = None  # e.g. "2026-07-29T18:30"
+    active: Optional[bool] = False
+    is_dispensed: Optional[bool] = False
+

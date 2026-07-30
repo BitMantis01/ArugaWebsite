@@ -16,17 +16,24 @@ templates.env.globals["now"] = datetime.utcnow
 
 
 @router.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return templates.TemplateResponse(request, "home.html")
+def home(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    return templates.TemplateResponse(request, "home.html", {"user": user})
 
 
 @router.get("/login", response_class=HTMLResponse)
-def login_page(request: Request):
+def login_page(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if user:
+        return RedirectResponse("/dashboard", status_code=302)
     return templates.TemplateResponse(request, "login.html")
 
 
 @router.get("/signup", response_class=HTMLResponse)
-def signup_page(request: Request):
+def signup_page(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if user:
+        return RedirectResponse("/dashboard", status_code=302)
     return templates.TemplateResponse(request, "signup.html")
 
 

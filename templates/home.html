@@ -10,8 +10,13 @@
     </div>
     <div class="nav-links">
         <a href="/">Home</a>
+        {% if user %}
+        <a href="/dashboard">Dashboard</a>
+        <a href="/api/logout" class="btn btn-outline btn-sm">Logout</a>
+        {% else %}
         <a href="/login">Login</a>
         <a href="/signup" class="btn btn-pink btn-sm">Get Started</a>
+        {% endif %}
     </div>
 </nav>
 
@@ -28,8 +33,12 @@
         predictive ARIMA analytics, automated medication dispensing, and immediate caregiver alerts.
     </p>
     <div style="display:flex;gap:1rem;justify-content:center;">
+        {% if user %}
+        <a href="/dashboard" class="btn btn-pink"><i class="fa-solid fa-gauge"></i> Go to Dashboard</a>
+        {% else %}
         <a href="/signup" class="btn btn-pink">Get Started</a>
         <a href="/login" class="btn btn-outline">Sign In</a>
+        {% endif %}
     </div>
 </section>
 

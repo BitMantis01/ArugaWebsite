@@ -45,6 +45,7 @@ function switchToTab(tabName) {
     if (tabName === 'vitals') initVitalsCharts();
     if (tabName === 'prediction') initPredictionCharts();
     if (tabName === 'live-feed') startFeedPolling();
+    if (tabName === 'medicines') loadMedicineSlots();
 }
 
 document.querySelectorAll('.sidebar .tab-btn').forEach(btn => {
@@ -54,11 +55,12 @@ document.querySelectorAll('.sidebar .tab-btn').forEach(btn => {
 // On page load, restore tab from URL hash
 (function restoreTabFromHash() {
     const hash = location.hash.replace('#', '');
-    const validTabs = ['summary', 'live-feed', 'vitals', 'prediction', 'notifications', 'profile', 'debug'];
+    const validTabs = ['summary', 'live-feed', 'vitals', 'prediction', 'notifications', 'profile', 'medicines', 'debug'];
     if (hash && validTabs.includes(hash)) {
         switchToTab(hash);
     }
 })();
+
 
 // ─── Common Chart Config ─────────────────────────────────────
 function gmt8Time(isoStr) {
@@ -110,81 +112,110 @@ function makeLineConfig(labels, data, color, label, yLabel) {
 // ─── Vitals History Charts ────────────────────────────────────
 let vitalsInitialized = false;
 
-function showNoDataMessage() {
-    ['chart-spo2', 'chart-hr', 'chart-temp', 'chart-bp'].forEach(id => {
-        destroyChart(id);
-        const canvas = document.getElementById(id);
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.font = '16px Inter, sans-serif';
-            ctx.fillStyle = GRAY_400;
-            ctx.textAlign = 'center';
-            ctx.fillText('No vitals data available yet.', canvas.width / 2, canvas.height / 2);
-        }
-    });
-    vitalsInitialized = false;
+function renderNoDataOnCanvas(canvasId, message) {
+    destroyChart(canvasId.replace('chart-', '').replace('pred-', 'pred'));
+    const canvas = document.getElementById(canvasId);
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '15px Inter, sans-serif';
+        ctx.fillStyle = GRAY_400;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+    }
 }
 
-function buildCharts(history) {
-    const labels = history.map(r => gmt8Time(r.recorded_at));
+function buildCharts(historyData) {
+    const history = Array.isArray(historyData) ? historyData : [];
 
+    // 1. SPO2 Chart
     destroyChart('spo2');
-    const ctx1 = document.getElementById('chart-spo2');
-    if (ctx1) charts['spo2'] = new Chart(ctx1, makeLineConfig(labels, history.map(r => r.spo2), PINK_500, 'SPO2', '%'));
+    const validSpo2 = history.filter(r => r && r.spo2 != null && !isNaN(r.spo2));
+    if (validSpo2.length > 0) {
+        const labels = validSpo2.map(r => gmt8Time(r.recorded_at));
+        const data = validSpo2.map(r => r.spo2);
+        const ctx = document.getElementById('chart-spo2');
+        if (ctx) charts['spo2'] = new Chart(ctx, makeLineConfig(labels, data, PINK_500, 'SPO2', '%'));
+    } else {
+        renderNoDataOnCanvas('chart-spo2', 'No SPO2 data recorded yet.');
+    }
 
+    // 2. Heart Rate Chart
     destroyChart('hr');
-    const ctx2 = document.getElementById('chart-hr');
-    if (ctx2) charts['hr'] = new Chart(ctx2, makeLineConfig(labels, history.map(r => r.heart_rate), '#ef4444', 'Heart Rate', 'BPM'));
+    const validHr = history.filter(r => r && r.heart_rate != null && !isNaN(r.heart_rate));
+    if (validHr.length > 0) {
+        const labels = validHr.map(r => gmt8Time(r.recorded_at));
+        const data = validHr.map(r => r.heart_rate);
+        const ctx = document.getElementById('chart-hr');
+        if (ctx) charts['hr'] = new Chart(ctx, makeLineConfig(labels, data, '#ef4444', 'Heart Rate', 'BPM'));
+    } else {
+        renderNoDataOnCanvas('chart-hr', 'No Heart Rate data recorded yet.');
+    }
 
+    // 3. Temperature Chart
     destroyChart('temp');
-    const ctx3 = document.getElementById('chart-temp');
-    if (ctx3) charts['temp'] = new Chart(ctx3, makeLineConfig(labels, history.map(r => r.temperature), AMBER_500, 'Temperature', '°C'));
+    const validTemp = history.filter(r => r && r.temperature != null && !isNaN(r.temperature));
+    if (validTemp.length > 0) {
+        const labels = validTemp.map(r => gmt8Time(r.recorded_at));
+        const data = validTemp.map(r => r.temperature);
+        const ctx = document.getElementById('chart-temp');
+        if (ctx) charts['temp'] = new Chart(ctx, makeLineConfig(labels, data, AMBER_500, 'Temperature', '°C'));
+    } else {
+        renderNoDataOnCanvas('chart-temp', 'No Temperature data recorded yet.');
+    }
 
+    // 4. Blood Pressure Chart
     destroyChart('bp');
-    const ctx4 = document.getElementById('chart-bp');
-    if (ctx4) {
-        charts['bp'] = new Chart(ctx4, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Systolic BP (SYS)',
-                        data: history.map(r => r.systolic_bp),
-                        borderColor: '#8b5cf6',
-                        backgroundColor: '#8b5cf620',
-                        borderWidth: 2.5,
-                        fill: true,
-                        tension: 0.35,
-                        spanGaps: true,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#8b5cf6',
-                    },
-                    {
-                        label: 'Diastolic BP (DIA)',
-                        data: history.map(r => r.diastolic_bp),
-                        borderColor: '#06b6d4',
-                        backgroundColor: '#06b6d420',
-                        borderWidth: 2.5,
-                        fill: true,
-                        tension: 0.35,
-                        spanGaps: true,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#06b6d4',
+    const validBp = history.filter(r => r && r.systolic_bp != null && r.diastolic_bp != null && !isNaN(r.systolic_bp) && !isNaN(r.diastolic_bp));
+    if (validBp.length > 0) {
+        const labels = validBp.map(r => gmt8Time(r.recorded_at));
+        const ctx = document.getElementById('chart-bp');
+        if (ctx) {
+            charts['bp'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Systolic BP (SYS)',
+                            data: validBp.map(r => r.systolic_bp),
+                            borderColor: '#8b5cf6',
+                            backgroundColor: '#8b5cf620',
+                            borderWidth: 2.5,
+                            fill: true,
+                            tension: 0.35,
+                            spanGaps: false,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#8b5cf6',
+                        },
+                        {
+                            label: 'Diastolic BP (DIA)',
+                            data: validBp.map(r => r.diastolic_bp),
+                            borderColor: '#06b6d4',
+                            backgroundColor: '#06b6d420',
+                            borderWidth: 2.5,
+                            fill: true,
+                            tension: 0.35,
+                            spanGaps: false,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#06b6d4',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, labels: { usePointStyle: true, boxWidth: 10 } } },
+                    scales: {
+                        y: { title: { display: true, text: 'mmHg', color: GRAY_400 }, grid: { color: PINK_100 } },
+                        x: { title: { display: true, text: 'Time', color: GRAY_400 }, grid: { display: false } }
                     }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: true, labels: { usePointStyle: true, boxWidth: 10 } } },
-                scales: {
-                    y: { title: { display: true, text: 'mmHg', color: GRAY_400 }, grid: { color: PINK_100 } },
-                    x: { title: { display: true, text: 'Time', color: GRAY_400 }, grid: { display: false } }
                 }
-            }
-        });
+            });
+        }
+    } else {
+        renderNoDataOnCanvas('chart-bp', 'No Blood Pressure data recorded yet.');
     }
 
     vitalsInitialized = true;
@@ -200,7 +231,6 @@ async function initVitalsCharts() {
         history = Array.isArray(window.__VITALS_HISTORY) ? window.__VITALS_HISTORY : [];
     }
 
-    if (history.length === 0) { showNoDataMessage(); return; }
     buildCharts(history);
 }
 
@@ -209,24 +239,8 @@ async function updateVitalsCharts() {
     try {
         const resp = await fetch('/api/vitals/history?limit=100');
         const history = await resp.json();
-        if (!Array.isArray(history) || history.length === 0) return;
-
-        const labels = history.map(r => gmt8Time(r.recorded_at));
-        ['spo2', 'hr', 'temp'].forEach(key => {
-            const c = charts[key];
-            if (!c) return;
-            c.data.labels = labels;
-            c.data.datasets[0].data = history.map(r => r[key === 'spo2' ? 'spo2' : key === 'hr' ? 'heart_rate' : 'temperature']);
-            c.update('none');
-        });
-
-        const bpChart = charts['bp'];
-        if (bpChart) {
-            bpChart.data.labels = labels;
-            bpChart.data.datasets[0].data = history.map(r => r.systolic_bp);
-            bpChart.data.datasets[1].data = history.map(r => r.diastolic_bp);
-            bpChart.update('none');
-        }
+        if (!Array.isArray(history)) return;
+        buildCharts(history);
     } catch (e) { /* ignore */ }
 }
 
@@ -243,82 +257,113 @@ async function initPredictionCharts() {
         const pred = await resp.json();
         const orders = pred.arima_orders || {};
 
+        // Helper for building non-null prediction dataset point objects
+        const createPredPoints = (histList, predList, futureTimes) => {
+            if (!histList || histList.length === 0 || !predList || predList.length === 0) {
+                return { histPoints: [], predPoints: [], labels: [] };
+            }
+            const histSlice = histList.slice(-20);
+            const histPoints = histSlice.map(r => ({ x: gmt8Time(r.recorded_at), y: r.val }));
+            const fTimes = (futureTimes || []).map(t => gmt8Time(t));
+            const lastPoint = histPoints[histPoints.length - 1];
+
+            const predPoints = [
+                { x: lastPoint.x, y: lastPoint.y },
+                ...predList.map((yVal, idx) => ({ x: fTimes[idx] || `+${idx+1}`, y: yVal }))
+            ];
+
+            const labels = [...histPoints.map(p => p.x), ...fTimes];
+            return { histPoints, predPoints, labels };
+        };
+
         // SPO2 Prediction
         destroyChart('predSpo2');
+        const validSpo2 = history.filter(r => r && r.spo2 != null && !isNaN(r.spo2)).map(r => ({ recorded_at: r.recorded_at, val: r.spo2 }));
         const ctxSpo2 = document.getElementById('chart-pred-spo2');
-        if (ctxSpo2) {
-            const histSpo2 = history.map(r => r.spo2).filter(v => v != null);
-            const histLabels = history.map(r => gmt8Time(r.recorded_at)).slice(-histSpo2.slice(-20).length);
-            const allLabels = [...histLabels.slice(-20), ...(pred.future_times || []).map(t => gmt8Time(t))];
-
+        if (ctxSpo2 && validSpo2.length > 0 && pred.spo2_predictions && pred.spo2_predictions.length > 0) {
+            const { histPoints, predPoints, labels } = createPredPoints(validSpo2, pred.spo2_predictions, pred.future_times);
             charts['predSpo2'] = new Chart(ctxSpo2, {
                 type: 'line',
                 data: {
-                    labels: allLabels,
+                    labels: labels,
                     datasets: [
-                        { label: 'Historical SPO2', data: [...histSpo2.slice(-20), ...Array(pred.spo2_predictions?.length || 0).fill(null)], borderColor: PINK_500, backgroundColor: PINK_100, borderWidth: 2, tension: 0.35, pointRadius: 2 },
-                        { label: 'Predicted SPO2', data: [...Array(histSpo2.slice(-20).length).fill(null), ...(pred.spo2_predictions || [])], borderColor: BLUE_500, borderDash: [6, 3], borderWidth: 2.5, tension: 0.35, pointRadius: 4, pointBackgroundColor: BLUE_500 },
+                        { label: 'Historical SPO2', data: histPoints, borderColor: PINK_500, backgroundColor: PINK_100, borderWidth: 2, tension: 0.35, pointRadius: 2, fill: true },
+                        { label: 'Predicted SPO2', data: predPoints, borderColor: BLUE_500, borderDash: [6, 3], borderWidth: 2.5, tension: 0.35, pointRadius: 4, pointBackgroundColor: BLUE_500, fill: false },
                     ],
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { usePointStyle: true } } }, scales: { y: { title: { display: true, text: 'SPO2 %', color: GRAY_400 }, grid: { color: PINK_100 } }, x: { grid: { display: false } } } },
             });
             document.getElementById('predSpo2-order').textContent = 'Model: ' + (orders.spo2 || '—');
+        } else if (ctxSpo2) {
+            renderNoDataOnCanvas('chart-pred-spo2', 'Insufficient SPO2 data for prediction.');
+            document.getElementById('predSpo2-order').textContent = 'Model: —';
         }
 
         // HR Prediction
         destroyChart('predHr');
+        const validHr = history.filter(r => r && r.heart_rate != null && !isNaN(r.heart_rate)).map(r => ({ recorded_at: r.recorded_at, val: r.heart_rate }));
         const ctxHr = document.getElementById('chart-pred-hr');
-        if (ctxHr) {
-            const histHr = history.map(r => r.heart_rate).filter(v => v != null);
-            const histLabels2 = history.map(r => gmt8Time(r.recorded_at)).slice(-histHr.slice(-20).length);
-            const allLabels2 = [...histLabels2.slice(-20), ...(pred.future_times || []).map(t => gmt8Time(t))];
+        if (ctxHr && validHr.length > 0 && pred.hr_predictions && pred.hr_predictions.length > 0) {
+            const { histPoints, predPoints, labels } = createPredPoints(validHr, pred.hr_predictions, pred.future_times);
             charts['predHr'] = new Chart(ctxHr, {
-                type: 'line', data: { labels: allLabels2, datasets: [
-                    { label: 'Historical HR', data: [...histHr.slice(-20), ...Array(pred.hr_predictions?.length || 0).fill(null)], borderColor: '#ef4444', backgroundColor: '#fee2e2', borderWidth: 2, tension: 0.35, pointRadius: 2 },
-                    { label: 'Predicted HR', data: [...Array(histHr.slice(-20).length).fill(null), ...(pred.hr_predictions || [])], borderColor: BLUE_500, borderDash: [6, 3], borderWidth: 2.5, tension: 0.35, pointRadius: 4, pointBackgroundColor: BLUE_500 },
-                ]},
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Historical HR', data: histPoints, borderColor: '#ef4444', backgroundColor: '#fee2e2', borderWidth: 2, tension: 0.35, pointRadius: 2, fill: true },
+                        { label: 'Predicted HR', data: predPoints, borderColor: BLUE_500, borderDash: [6, 3], borderWidth: 2.5, tension: 0.35, pointRadius: 4, pointBackgroundColor: BLUE_500, fill: false },
+                    ]
+                },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { usePointStyle: true } } }, scales: { y: { title: { display: true, text: 'BPM', color: GRAY_400 }, grid: { color: PINK_100 } }, x: { grid: { display: false } } } },
             });
             document.getElementById('predHr-order').textContent = 'Model: ' + (orders.hr || '—');
+        } else if (ctxHr) {
+            renderNoDataOnCanvas('chart-pred-hr', 'Insufficient Heart Rate data for prediction.');
+            document.getElementById('predHr-order').textContent = 'Model: —';
         }
 
         // Temp Prediction
         destroyChart('predTemp');
+        const validTemp = history.filter(r => r && r.temperature != null && !isNaN(r.temperature)).map(r => ({ recorded_at: r.recorded_at, val: r.temperature }));
         const ctxTemp = document.getElementById('chart-pred-temp');
-        if (ctxTemp) {
-            const histTemp = history.map(r => r.temperature).filter(v => v != null);
-            const histLabels3 = history.map(r => gmt8Time(r.recorded_at)).slice(-histTemp.slice(-20).length);
-            const allLabels3 = [...histLabels3.slice(-20), ...(pred.future_times || []).map(t => gmt8Time(t))];
+        if (ctxTemp && validTemp.length > 0 && pred.temp_predictions && pred.temp_predictions.length > 0) {
+            const { histPoints, predPoints, labels } = createPredPoints(validTemp, pred.temp_predictions, pred.future_times);
             charts['predTemp'] = new Chart(ctxTemp, {
-                type: 'line', data: { labels: allLabels3, datasets: [
-                    { label: 'Historical Temp', data: [...histTemp.slice(-20), ...Array(pred.temp_predictions?.length || 0).fill(null)], borderColor: AMBER_500, backgroundColor: '#fef3c7', borderWidth: 2, tension: 0.35, pointRadius: 2 },
-                    { label: 'Predicted Temp', data: [...Array(histTemp.slice(-20).length).fill(null), ...(pred.temp_predictions || [])], borderColor: BLUE_500, borderDash: [6, 3], borderWidth: 2.5, tension: 0.35, pointRadius: 4, pointBackgroundColor: BLUE_500 },
-                ]},
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Historical Temp', data: histPoints, borderColor: AMBER_500, backgroundColor: '#fef3c7', borderWidth: 2, tension: 0.35, pointRadius: 2, fill: true },
+                        { label: 'Predicted Temp', data: predPoints, borderColor: BLUE_500, borderDash: [6, 3], borderWidth: 2.5, tension: 0.35, pointRadius: 4, pointBackgroundColor: BLUE_500, fill: false },
+                    ]
+                },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { usePointStyle: true } } }, scales: { y: { title: { display: true, text: '°C', color: GRAY_400 }, grid: { color: PINK_100 } }, x: { grid: { display: false } } } },
             });
             document.getElementById('predTemp-order').textContent = 'Model: ' + (orders.temp || '—');
+        } else if (ctxTemp) {
+            renderNoDataOnCanvas('chart-pred-temp', 'Insufficient Temperature data for prediction.');
+            document.getElementById('predTemp-order').textContent = 'Model: —';
         }
 
-        // Blood Pressure (SYS / DIA) Prediction
+        // BP Prediction
         destroyChart('predBp');
+        const validSys = history.filter(r => r && r.systolic_bp != null && !isNaN(r.systolic_bp)).map(r => ({ recorded_at: r.recorded_at, val: r.systolic_bp }));
+        const validDia = history.filter(r => r && r.diastolic_bp != null && !isNaN(r.diastolic_bp)).map(r => ({ recorded_at: r.recorded_at, val: r.diastolic_bp }));
         const ctxBp = document.getElementById('chart-pred-bp');
-        if (ctxBp) {
-            const histSys = history.map(r => r.systolic_bp).filter(v => v != null);
-            const histDia = history.map(r => r.diastolic_bp).filter(v => v != null);
-            const maxHistLen = Math.max(histSys.length, histDia.length, 1);
-            const histLabels4 = history.map(r => gmt8Time(r.recorded_at)).slice(-maxHistLen);
-            const allLabels4 = [...histLabels4.slice(-20), ...(pred.future_times || []).map(t => gmt8Time(t))];
-            const histCount = histLabels4.slice(-20).length;
+        if (ctxBp && validSys.length > 0 && validDia.length > 0 && pred.sys_bp_predictions && pred.dia_bp_predictions) {
+            const sysObj = createPredPoints(validSys, pred.sys_bp_predictions, pred.future_times);
+            const diaObj = createPredPoints(validDia, pred.dia_bp_predictions, pred.future_times);
+            const allBpLabels = sysObj.labels.length >= diaObj.labels.length ? sysObj.labels : diaObj.labels;
 
             charts['predBp'] = new Chart(ctxBp, {
                 type: 'line',
                 data: {
-                    labels: allLabels4,
+                    labels: allBpLabels,
                     datasets: [
-                        { label: 'Historical SYS', data: [...histSys.slice(-20), ...Array(pred.sys_bp_predictions?.length || 0).fill(null)], borderColor: '#8b5cf6', borderWidth: 2, tension: 0.35, pointRadius: 2 },
-                        { label: 'Predicted SYS', data: [...Array(histCount).fill(null), ...(pred.sys_bp_predictions || [])], borderColor: '#6366f1', borderDash: [6, 3], borderWidth: 2.5, tension: 0.35, pointRadius: 4, pointBackgroundColor: '#6366f1' },
-                        { label: 'Historical DIA', data: [...histDia.slice(-20), ...Array(pred.dia_bp_predictions?.length || 0).fill(null)], borderColor: '#06b6d4', borderWidth: 2, tension: 0.35, pointRadius: 2 },
-                        { label: 'Predicted DIA', data: [...Array(histCount).fill(null), ...(pred.dia_bp_predictions || [])], borderColor: '#0284c7', borderDash: [6, 3], borderWidth: 2.5, tension: 0.35, pointRadius: 4, pointBackgroundColor: '#0284c7' },
+                        { label: 'Historical SYS', data: sysObj.histPoints, borderColor: '#8b5cf6', borderWidth: 2, tension: 0.35, pointRadius: 2, fill: false },
+                        { label: 'Predicted SYS', data: sysObj.predPoints, borderColor: '#6366f1', borderDash: [6, 3], borderWidth: 2.5, tension: 0.35, pointRadius: 4, pointBackgroundColor: '#6366f1', fill: false },
+                        { label: 'Historical DIA', data: diaObj.histPoints, borderColor: '#06b6d4', borderWidth: 2, tension: 0.35, pointRadius: 2, fill: false },
+                        { label: 'Predicted DIA', data: diaObj.predPoints, borderColor: '#0284c7', borderDash: [6, 3], borderWidth: 2.5, tension: 0.35, pointRadius: 4, pointBackgroundColor: '#0284c7', fill: false },
                     ]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { usePointStyle: true } } }, scales: { y: { title: { display: true, text: 'mmHg', color: GRAY_400 }, grid: { color: PINK_100 } }, x: { grid: { display: false } } } },
@@ -326,6 +371,9 @@ async function initPredictionCharts() {
             const sysOrder = orders.sys_bp || '—';
             const diaOrder = orders.dia_bp || '—';
             document.getElementById('predBp-order').textContent = `Models — SYS: ${sysOrder} | DIA: ${diaOrder}`;
+        } else if (ctxBp) {
+            renderNoDataOnCanvas('chart-pred-bp', 'Insufficient Blood Pressure data for prediction.');
+            document.getElementById('predBp-order').textContent = 'Model: —';
         }
 
         predsInitialized = true;
@@ -776,3 +824,208 @@ async function clearDebugOverrides() {
         alert('Error: ' + err.message);
     }
 }
+
+
+// ─── Medicine Dispenser Schedule (7 Slots) ───────────────────
+function getGMT8Date() {
+    const d = new Date();
+    // Convert to GMT+8
+    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    return new Date(utc + (3600000 * 8));
+}
+
+function updateGMT8LiveClock() {
+    const clockEl = document.getElementById('gmt8-live-clock');
+    const now8 = getGMT8Date();
+    if (clockEl) {
+        const dateStr = now8.getFullYear() + '-' +
+            String(now8.getMonth() + 1).padStart(2, '0') + '-' +
+            String(now8.getDate()).padStart(2, '0');
+        const timeStr = now8.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        clockEl.textContent = `${dateStr} ${timeStr}`;
+    }
+
+    // Check active slots live against current GMT+8 time
+    for (let slot = 1; slot <= 7; slot++) {
+        const dtInput = document.getElementById(`med-datetime-${slot}`);
+        const activeChk = document.getElementById(`med-active-${slot}`);
+        const statusBadge = document.getElementById(`med-status-badge-${slot}`);
+        const infoEl = document.getElementById(`med-info-${slot}`);
+        const card = document.getElementById(`med-slot-card-${slot}`);
+        const dispenseBtn = document.getElementById(`med-dispense-btn-${slot}`);
+
+        if (!activeChk || !dtInput || !statusBadge || !card) continue;
+
+        const isDispensed = card.dataset.isDispensed === 'true';
+
+        if (isDispensed) {
+            statusBadge.textContent = 'Dispensed / Completed';
+            statusBadge.style.background = '#3b82f6';
+            statusBadge.style.color = 'white';
+            card.style.borderColor = '#3b82f6';
+            card.style.boxShadow = 'none';
+            if (dispenseBtn) dispenseBtn.style.display = 'none';
+            if (infoEl) infoEl.innerHTML = `Status: <span style="color:#3b82f6;font-weight:600;">✅ Medicine taken / dispensed</span>`;
+            continue;
+        }
+
+        if (!activeChk.checked) {
+            statusBadge.textContent = 'Disabled';
+            statusBadge.style.background = 'var(--gray-200)';
+            statusBadge.style.color = 'var(--gray-700)';
+            card.style.borderColor = 'var(--pink-200)';
+            if (dispenseBtn) dispenseBtn.style.display = 'none';
+            continue;
+        }
+
+        if (!dtInput.value) {
+            statusBadge.textContent = 'Scheduled (No Time)';
+            statusBadge.style.background = '#f59e0b';
+            statusBadge.style.color = 'white';
+            card.style.borderColor = 'var(--pink-200)';
+            if (dispenseBtn) dispenseBtn.style.display = 'none';
+            continue;
+        }
+
+        const scheduledTarget = new Date(dtInput.value);
+        if (isNaN(scheduledTarget.getTime())) continue;
+
+        if (now8 >= scheduledTarget) {
+            statusBadge.textContent = `DUE! (Dispense Code: ${slot})`;
+            statusBadge.style.background = '#ef4444';
+            statusBadge.style.color = 'white';
+            card.style.borderColor = '#ef4444';
+            card.style.boxShadow = '0 0 12px rgba(239, 68, 68, 0.3)';
+            if (dispenseBtn) dispenseBtn.style.display = 'inline-block';
+            if (infoEl) infoEl.innerHTML = `<span style="color:#ef4444;font-weight:700;">🚨 Target time reached! ESP32 trigger code: medicinedispense = ${slot}</span>`;
+        } else {
+            statusBadge.textContent = 'Active / Waiting';
+            statusBadge.style.background = '#10b981';
+            statusBadge.style.color = 'white';
+            card.style.borderColor = '#10b981';
+            card.style.boxShadow = 'none';
+            if (dispenseBtn) dispenseBtn.style.display = 'none';
+            const diffMs = scheduledTarget - now8;
+            const diffMin = Math.round(diffMs / 60000);
+            if (infoEl) infoEl.innerHTML = `Status: <span style="color:#10b981;font-weight:600;">Scheduled for ${scheduledTarget.toLocaleString()} (in ~${diffMin} mins)</span>`;
+        }
+    }
+}
+
+setInterval(updateGMT8LiveClock, 1000);
+
+async function loadMedicineSlots() {
+    try {
+        const resp = await fetch('/api/medicines');
+        const slots = await resp.json();
+        if (!Array.isArray(slots)) return;
+
+        slots.forEach(slot => {
+            const num = slot.slot_number;
+            const card = document.getElementById(`med-slot-card-${num}`);
+            const nameEl = document.getElementById(`med-name-${num}`);
+            const dosageEl = document.getElementById(`med-dosage-${num}`);
+            const dtEl = document.getElementById(`med-datetime-${num}`);
+            const activeEl = document.getElementById(`med-active-${num}`);
+
+            if (card) card.dataset.isDispensed = slot.is_dispensed ? 'true' : 'false';
+            if (nameEl) nameEl.value = slot.name || '';
+            if (dosageEl) dosageEl.value = slot.dosage || '';
+            if (activeEl) activeEl.checked = !!slot.active;
+
+            if (dtEl && slot.scheduled_datetime) {
+                dtEl.value = slot.scheduled_datetime.substring(0, 16);
+            } else if (dtEl) {
+                dtEl.value = '';
+            }
+        });
+
+        updateGMT8LiveClock();
+    } catch (err) {
+        console.error('Failed to load medicine slots:', err);
+    }
+}
+
+async function saveMedicineSlot(slotNum) {
+    const name = document.getElementById(`med-name-${slotNum}`)?.value || '';
+    const dosage = document.getElementById(`med-dosage-${slotNum}`)?.value || '';
+    const dtVal = document.getElementById(`med-datetime-${slotNum}`)?.value || null;
+    const active = document.getElementById(`med-active-${slotNum}`)?.checked || false;
+
+    try {
+        const resp = await fetch('/api/medicines/slot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                slot_number: slotNum,
+                name: name,
+                dosage: dosage,
+                scheduled_datetime: dtVal ? dtVal + ':00' : null,
+                active: active,
+                is_dispensed: false
+            })
+        });
+
+        const data = await resp.json();
+        if (resp.ok) {
+            alert(`Medicine Slot ${slotNum} saved successfully!`);
+            loadMedicineSlots();
+        } else {
+            alert('Failed to save slot: ' + (data.detail || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error saving medicine slot: ' + err.message);
+    }
+}
+
+async function markSlotDispensed(slotNum) {
+    const name = document.getElementById(`med-name-${slotNum}`)?.value || '';
+    const dosage = document.getElementById(`med-dosage-${slotNum}`)?.value || '';
+    const dtVal = document.getElementById(`med-datetime-${slotNum}`)?.value || null;
+    const active = document.getElementById(`med-active-${slotNum}`)?.checked || false;
+
+    try {
+        const resp = await fetch('/api/medicines/slot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                slot_number: slotNum,
+                name: name,
+                dosage: dosage,
+                scheduled_datetime: dtVal ? dtVal + ':00' : null,
+                active: active,
+                is_dispensed: true
+            })
+        });
+
+        if (resp.ok) {
+            alert(`Medicine Slot ${slotNum} marked as dispensed!`);
+            loadMedicineSlots();
+        } else {
+            alert('Error updating slot status.');
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function resetMedicineSlot(slotNum) {
+    if (!confirm(`Are you sure you want to clear Medicine Slot ${slotNum}?`)) return;
+    try {
+        const resp = await fetch(`/api/medicines/slot/${slotNum}/reset`, { method: 'POST' });
+        if (resp.ok) {
+            document.getElementById(`med-name-${slotNum}`).value = `Medicine Slot ${slotNum}`;
+            document.getElementById(`med-dosage-${slotNum}`).value = '';
+            document.getElementById(`med-datetime-${slotNum}`).value = '';
+            document.getElementById(`med-active-${slotNum}`).checked = false;
+            const card = document.getElementById(`med-slot-card-${slotNum}`);
+            if (card) card.dataset.isDispensed = 'false';
+            loadMedicineSlots();
+            alert(`Slot ${slotNum} cleared.`);
+        }
+    } catch (err) {
+        alert('Error clearing slot: ' + err.message);
+    }
+}
+
+

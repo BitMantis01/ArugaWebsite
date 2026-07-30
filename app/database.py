@@ -34,5 +34,24 @@ def get_db():
         db.close()
 
 
-def init_db():
+def migrate_db():
     Base.metadata.create_all(bind=engine)
+    if DATABASE_URL.startswith("sqlite"):
+        with engine.connect() as conn:
+            from sqlalchemy import text
+            try:
+                columns = [row[1] for row in conn.execute(text("PRAGMA table_info(medicines)")).fetchall()]
+                if "slot_number" not in columns:
+                    conn.execute(text("ALTER TABLE medicines ADD COLUMN slot_number INTEGER DEFAULT 1"))
+                if "scheduled_datetime" not in columns:
+                    conn.execute(text("ALTER TABLE medicines ADD COLUMN scheduled_datetime DATETIME"))
+                if "is_dispensed" not in columns:
+                    conn.execute(text("ALTER TABLE medicines ADD COLUMN is_dispensed BOOLEAN DEFAULT 0"))
+                conn.commit()
+            except Exception as e:
+                pass
+
+
+def init_db():
+    migrate_db()
+

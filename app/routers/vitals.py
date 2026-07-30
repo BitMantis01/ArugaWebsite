@@ -1,12 +1,15 @@
+import csv
+import io
 from datetime import datetime, timedelta
 from typing import Optional, List
-from fastapi import APIRouter, Request, Depends, HTTPException, Query
+from fastapi import APIRouter, Request, Depends, HTTPException, Query, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User, VitalRecord, Notification
-from app.schemas import ProfileUpdate
+from app.models import User, VitalRecord, Notification, Medicine
+from app.schemas import ProfileUpdate, MedicineSlotUpdate
+
 from app.routers.auth import require_user, get_current_user
 from app.services.prediction_service import get_vitals_predictions
 
@@ -70,6 +73,53 @@ def api_vitals_history(
     ])
 
 
+@router.get("/api/vitals/export")
+def api_export_vitals(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user = require_user(request, db)
+    records = (
+        db.query(VitalRecord)
+        .filter(VitalRecord.user_id == user.id)
+        .order_by(VitalRecord.recorded_at.desc())
+        .all()
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Record ID",
+        "Timestamp (UTC)",
+        "SpO2 (%)",
+        "Heart Rate (BPM)",
+        "Temperature (C)",
+        "Systolic BP (mmHg)",
+        "Diastolic BP (mmHg)",
+        "Sensor Error"
+    ])
+
+    for r in records:
+        writer.writerow([
+            r.id,
+            r.recorded_at.isoformat() if r.recorded_at else "",
+            r.spo2 if r.spo2 is not None else "",
+            r.heart_rate if r.heart_rate is not None else "",
+            r.temperature if r.temperature is not None else "",
+            r.systolic_bp if r.systolic_bp is not None else "",
+            r.diastolic_bp if r.diastolic_bp is not None else "",
+            "Yes" if r.sensor_error else "No"
+        ])
+
+    csv_content = output.getvalue()
+    filename = f"aruga_vitals_user_{user.id}.csv"
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
 @router.get("/api/predictions")
 def api_predictions(
     request: Request,
@@ -77,24 +127,34 @@ def api_predictions(
     db: Session = Depends(get_db),
 ):
     user = require_user(request, db)
-    records = (
+    raw_records = (
         db.query(VitalRecord)
         .filter(VitalRecord.user_id == user.id, VitalRecord.sensor_error == False)
         .order_by(VitalRecord.recorded_at.desc())
         .limit(100)
         .all()
     )
-    records.reverse()
+    raw_records.reverse()
 
-    spo2_h = [r.spo2 for r in records if r.spo2 is not None]
-    hr_h = [r.heart_rate for r in records if r.heart_rate is not None]
-    temp_h = [r.temperature for r in records if r.temperature is not None]
-    sys_bp_h = [r.systolic_bp for r in records if r.systolic_bp is not None]
-    dia_bp_h = [r.diastolic_bp for r in records if r.diastolic_bp is not None]
+    # Filter strictly to records with ALL vitals present
+    records = [
+        r for r in raw_records
+        if r.spo2 is not None
+        and r.heart_rate is not None
+        and r.temperature is not None
+        and r.systolic_bp is not None
+        and r.diastolic_bp is not None
+    ]
+
+    spo2_h = [r.spo2 for r in records]
+    hr_h = [r.heart_rate for r in records]
+    temp_h = [r.temperature for r in records]
+    sys_bp_h = [r.systolic_bp for r in records]
+    dia_bp_h = [r.diastolic_bp for r in records]
 
     results = get_vitals_predictions(spo2_h, hr_h, temp_h, sys_bp_h, dia_bp_h, steps=steps)
 
-    last_time = records[-1].recorded_at if records else datetime.utcnow()
+    last_time = raw_records[-1].recorded_at if raw_records else datetime.utcnow()
     future_times = [(last_time + timedelta(seconds=15 * (i + 1))).isoformat() for i in range(steps)]
     results["future_times"] = future_times
 
@@ -180,3 +240,122 @@ def api_update_profile(
     db.commit()
     db.refresh(user)
     return JSONResponse({"status": "ok", "message": "Profile updated successfully"})
+
+
+def ensure_user_medicine_slots(user_id: int, db: Session) -> List[Medicine]:
+    """Ensure user has exactly 7 slots (1 to 7) in database."""
+    existing = db.query(Medicine).filter(Medicine.user_id == user_id).all()
+    by_slot = {m.slot_number: m for m in existing if m.slot_number}
+
+    updated = False
+    for slot in range(1, 8):
+        if slot not in by_slot:
+            med = Medicine(
+                user_id=user_id,
+                slot_number=slot,
+                name=f"Medicine Slot {slot}",
+                dosage="",
+                active=False,
+                is_dispensed=False,
+            )
+            db.add(med)
+            updated = True
+
+    if updated:
+        db.commit()
+
+    return (
+        db.query(Medicine)
+        .filter(Medicine.user_id == user_id)
+        .order_by(Medicine.slot_number.asc())
+        .all()
+    )
+
+
+@router.get("/api/medicines")
+def api_get_medicines(request: Request, db: Session = Depends(get_db)):
+    user = require_user(request, db)
+    slots = ensure_user_medicine_slots(user.id, db)
+    return JSONResponse([
+        {
+            "id": s.id,
+            "slot_number": s.slot_number,
+            "name": s.name,
+            "dosage": s.dosage,
+            "active": s.active,
+            "is_dispensed": s.is_dispensed,
+            "scheduled_datetime": s.scheduled_datetime.isoformat() if s.scheduled_datetime else None,
+        }
+        for s in slots
+    ])
+
+
+@router.post("/api/medicines/slot")
+def api_update_medicine_slot(
+    payload: MedicineSlotUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user = require_user(request, db)
+    if not (1 <= payload.slot_number <= 7):
+        raise HTTPException(status_code=400, detail="Slot number must be between 1 and 7")
+
+    slots = ensure_user_medicine_slots(user.id, db)
+    slot_obj = next((s for s in slots if s.slot_number == payload.slot_number), None)
+    if not slot_obj:
+        raise HTTPException(status_code=404, detail="Slot not found")
+
+    slot_obj.name = payload.name.strip() if payload.name else f"Medicine Slot {payload.slot_number}"
+    slot_obj.dosage = payload.dosage.strip() if payload.dosage else ""
+    slot_obj.active = bool(payload.active)
+    slot_obj.is_dispensed = bool(payload.is_dispensed)
+
+    if payload.scheduled_datetime:
+        try:
+            # Parse datetime string e.g. "2026-07-29T18:30"
+            dt_str = payload.scheduled_datetime.replace("Z", "")
+            slot_obj.scheduled_datetime = datetime.fromisoformat(dt_str)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid datetime format")
+    else:
+        slot_obj.scheduled_datetime = None
+
+    db.commit()
+    db.refresh(slot_obj)
+
+    return JSONResponse({
+        "status": "ok",
+        "message": f"Medicine Slot {payload.slot_number} updated",
+        "slot": {
+            "slot_number": slot_obj.slot_number,
+            "name": slot_obj.name,
+            "dosage": slot_obj.dosage,
+            "active": slot_obj.active,
+            "is_dispensed": slot_obj.is_dispensed,
+            "scheduled_datetime": slot_obj.scheduled_datetime.isoformat() if slot_obj.scheduled_datetime else None,
+        }
+    })
+
+
+@router.post("/api/medicines/slot/{slot_number}/reset")
+def api_reset_medicine_slot(
+    slot_number: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user = require_user(request, db)
+    if not (1 <= slot_number <= 7):
+        raise HTTPException(status_code=400, detail="Slot number must be between 1 and 7")
+
+    slots = ensure_user_medicine_slots(user.id, db)
+    slot_obj = next((s for s in slots if s.slot_number == slot_number), None)
+    if slot_obj:
+        slot_obj.name = f"Medicine Slot {slot_number}"
+        slot_obj.dosage = ""
+        slot_obj.scheduled_datetime = None
+        slot_obj.active = False
+        slot_obj.is_dispensed = False
+        db.commit()
+
+    return JSONResponse({"status": "ok", "message": f"Slot {slot_number} reset"})
+

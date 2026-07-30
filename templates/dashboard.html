@@ -5,11 +5,14 @@
 <!-- NAVBAR -->
 <nav class="navbar">
     <div class="logo-area">
-        <img src="/static/images/logo.svg" alt="Logo" width="40" height="40" style="border-radius:8px;"
-             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23f4a4b5%22 width=%22100%22 height=%22100%22 rx=%2220%22/><text x=%2250%22 y=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>A</text></svg>'">
-        <span>ARUGA</span>
+        <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;">
+            <img src="/static/images/logo.svg" alt="Logo" width="40" height="40" style="border-radius:8px;"
+                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23f4a4b5%22 width=%22100%22 height=%22100%22 rx=%2220%22/><text x=%2250%22 y=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>A</text></svg>'">
+            <span>ARUGA</span>
+        </a>
     </div>
     <div class="nav-links">
+        <a href="/" class="btn btn-outline btn-sm" style="display:inline-flex;align-items:center;gap:6px;"><i class="fa-solid fa-house"></i> Home</a>
         <span style="font-size:0.9rem;color:var(--gray-600);">{{ user.full_name }}</span>
         <a href="/api/logout" class="btn btn-outline btn-sm">Logout</a>
     </div>
@@ -38,17 +41,24 @@
         <button class="tab-btn" data-tab="profile">
             Profile
         </button>
+        <button class="tab-btn" data-tab="medicines">
+            Medicine Schedule
+        </button>
         <button class="tab-btn" data-tab="debug">
             Debug
         </button>
     </aside>
+
 
     <!-- MAIN CONTENT -->
     <main class="dashboard-content">
 
         <!-- ========== SUMMARY TAB ========== -->
         <div class="tab-panel active" id="tab-summary">
-            <h2 style="color:var(--pink-700);margin-bottom:1rem;">Summary Dashboard</h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+                <h2 style="color:var(--pink-700);margin:0;">Summary Dashboard</h2>
+                <a href="/api/vitals/export" class="btn btn-outline btn-sm" download style="display:inline-flex;align-items:center;gap:6px;"><i class="fa-solid fa-file-csv"></i> Export CSV</a>
+            </div>
 
             <!-- Vitals Cards -->
             <div class="vitals-grid" id="summary-vitals">
@@ -180,7 +190,10 @@
 
         <!-- ========== VITALS HISTORY TAB ========== -->
         <div class="tab-panel" id="tab-vitals">
-            <h2 style="color:var(--pink-700);margin-bottom:1rem;">Vitals History</h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+                <h2 style="color:var(--pink-700);margin:0;">Vitals History</h2>
+                <a href="/api/vitals/export" class="btn btn-outline btn-sm" download style="display:inline-flex;align-items:center;gap:6px;"><i class="fa-solid fa-file-csv"></i> Export CSV</a>
+            </div>
             <div class="card" style="margin-bottom:1rem;">
                 <div class="card-header"><h3>SPO2 Over Time</h3></div>
                 <div class="chart-container"><canvas id="chart-spo2"></canvas></div>
@@ -318,8 +331,67 @@
             </div>
         </div>
 
+        <!-- ========== MEDICINE SCHEDULE TAB ========== -->
+        <div class="tab-panel" id="tab-medicines">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+                <div>
+                    <h2 style="color:var(--pink-700);margin:0;">Medicine Dispenser Schedule (7 Slots)</h2>
+                    <p style="color:var(--gray-400);margin:0.25rem 0 0;font-size:0.9rem;">
+                        Schedule up to 7 medicines. When GMT+8 time reaches or exceeds a scheduled time, <code>medicinedispense: N</code> (1–7) is sent to the ESP32.
+                    </p>
+                </div>
+                <div style="background:var(--pink-100);color:var(--pink-800);padding:0.6rem 1.2rem;border-radius:12px;font-weight:600;font-size:0.95rem;display:flex;align-items:center;gap:0.6rem;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                    <i class="fa-solid fa-clock"></i> GMT+8 Live: <span id="gmt8-live-clock" style="font-family:monospace;font-weight:700;font-size:1.1rem;">--:--:--</span>
+                </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:1rem;margin-top:1.5rem;">
+                {% for slot_idx in range(1, 8) %}
+                <div class="card medicine-slot-card" id="med-slot-card-{{ slot_idx }}" style="border:1.5px solid var(--pink-200);transition:all 0.3s ease;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;flex-wrap:wrap;gap:0.5rem;">
+                        <div style="display:flex;align-items:center;gap:0.6rem;">
+                            <span class="badge" style="background:var(--pink-600);color:white;padding:4px 12px;border-radius:20px;font-weight:700;font-size:0.85rem;">Slot {{ slot_idx }}</span>
+                            <span id="med-status-badge-{{ slot_idx }}" class="badge" style="background:var(--gray-200);color:var(--gray-700);padding:3px 10px;border-radius:20px;font-size:0.8rem;font-weight:600;">Disabled</span>
+                        </div>
+                        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.9rem;cursor:pointer;font-weight:600;color:var(--gray-700);">
+                            <input type="checkbox" id="med-active-{{ slot_idx }}" style="width:18px;height:18px;accent-color:var(--pink-600);"> Enable Slot {{ slot_idx }}
+                        </label>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:1rem;">
+                        <div>
+                            <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--gray-600);margin-bottom:4px;">Medicine Name</label>
+                            <input type="text" id="med-name-{{ slot_idx }}" placeholder="e.g. Aspirin 100mg" style="width:100%;padding:8px 12px;border:1.5px solid var(--pink-200);border-radius:8px;font-size:0.9rem;">
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--gray-600);margin-bottom:4px;">Dosage / Notes</label>
+                            <input type="text" id="med-dosage-{{ slot_idx }}" placeholder="e.g. 1 tablet after breakfast" style="width:100%;padding:8px 12px;border:1.5px solid var(--pink-200);border-radius:8px;font-size:0.9rem;">
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--gray-600);margin-bottom:4px;">Scheduled Date & Time (GMT+8)</label>
+                            <input type="datetime-local" id="med-datetime-{{ slot_idx }}" style="width:100%;padding:8px 12px;border:1.5px solid var(--pink-200);border-radius:8px;font-size:0.9rem;">
+                        </div>
+                    </div>
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--pink-100);flex-wrap:wrap;gap:0.5rem;">
+                        <div style="font-size:0.85rem;color:var(--gray-500);" id="med-info-{{ slot_idx }}">
+                            Status: <span style="font-weight:600;color:var(--gray-700);">Not set</span>
+                        </div>
+                        <div style="display:flex;gap:0.5rem;">
+                            <button class="btn btn-sm" id="med-dispense-btn-{{ slot_idx }}" style="background:#10b981;color:white;display:none;" onclick="markSlotDispensed({{ slot_idx }})"><i class="fa-solid fa-check"></i> Mark Dispensed</button>
+                            <button class="btn btn-outline btn-sm" onclick="resetMedicineSlot({{ slot_idx }})">Clear Slot</button>
+                            <button class="btn btn-pink btn-sm" onclick="saveMedicineSlot({{ slot_idx }})">Save Slot {{ slot_idx }}</button>
+                        </div>
+
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
         <!-- ========== DEBUG TAB ========== -->
         <div class="tab-panel" id="tab-debug">
+
             <h2 style="color:var(--pink-700);margin-bottom:1rem;">Debug — ESP32 Alerts API</h2>
             <p style="color:var(--gray-400);margin-bottom:1rem;">
                 Override the response of <code>GET /api/esp32/alerts/{{ user.id }}</code>

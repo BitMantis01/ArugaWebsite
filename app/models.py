@@ -52,14 +52,18 @@ class Medicine(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    name = Column(String(255), nullable=False)
-    dosage = Column(String(100), nullable=False)
-    frequency = Column(String(100), nullable=False)  # e.g. "Twice daily", "Every 8 hours"
-    scheduled_time = Column(String(100), nullable=True)  # e.g. "08:00, 20:00"
+    slot_number = Column(Integer, nullable=False, default=1, index=True)  # 1 to 7
+    name = Column(String(255), nullable=False, default="Empty Slot")
+    dosage = Column(String(100), nullable=True, default="")
+    frequency = Column(String(100), nullable=True, default="")
+    scheduled_time = Column(String(100), nullable=True)
+    scheduled_datetime = Column(DateTime, nullable=True)  # GMT+8 target datetime
+    is_dispensed = Column(Boolean, default=False)
     notes = Column(Text, nullable=True)
-    active = Column(Boolean, default=True)
+    active = Column(Boolean, default=False)
 
     user = relationship("User", back_populates="medicines")
+
 
 
 class Notification(Base):

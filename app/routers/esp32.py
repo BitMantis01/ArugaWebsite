@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.config import API_KEY
 from app.database import get_db
-from app.models import User, VitalRecord, Notification
+from app.models import User, VitalRecord, Notification, Medicine
+
 from app.schemas import VitalsUploadPayload, DebugOverridePayload
 from app.services.vitals_service import check_vitals_alert
 
@@ -202,10 +203,33 @@ async def api_esp32_alerts(
         user.age, hr, spo2_val, temp_val, sys_bp, dia_bp, sensor_error=sensor_error
     )
 
+    # Compute active medicine slot due (1 to 7) in GMT+8 (newest due slot first)
+    now_gmt8 = datetime.utcnow() + timedelta(hours=8)
+    auto_meddispense = 0
+
+    due_med = (
+        db.query(Medicine)
+        .filter(
+            Medicine.user_id == patient_id,
+            Medicine.active == True,
+            Medicine.is_dispensed == False,
+            Medicine.scheduled_datetime.isnot(None),
+            Medicine.scheduled_datetime <= now_gmt8,
+        )
+        .order_by(Medicine.scheduled_datetime.desc(), Medicine.slot_number.desc())
+        .first()
+    )
+
+    if due_med:
+        auto_meddispense = due_med.slot_number
+
+
     overrides = _debug_overrides.get(patient_id, {})
     final_smsalert = overrides.get("smsalert", False)
     final_smsalertmsg = overrides.get("smsalertmsg", "none")
-    final_meddispense = overrides.get("medicinedispense", 0)
+    override_med = overrides.get("medicinedispense")
+    final_meddispense = override_med if (override_med is not None and override_med > 0) else auto_meddispense
+
     if overrides.get("led"):
         led = overrides["led"]
     if overrides.get("lcd3"):
@@ -214,6 +238,7 @@ async def api_esp32_alerts(
         is_alert = overrides["alert"]
 
     final_move = overrides.get("move", False)
+
 
     return JSONResponse({
         "led": led,
