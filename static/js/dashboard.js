@@ -399,13 +399,19 @@ function toggleHistory() {
     chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
 }
 
+function resolveFeedImgUrl(path) {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    return '/static/' + path.replace(/^\//, '');
+}
+
 // Apply all images from the ring buffer to the DOM
 function renderFeed() {
     // --- Main snapshot (latest image) ---
     if (feedImages.length > 0) {
         const latest = feedImages[0];
         const mainContainer = document.getElementById('feed-main-container');
-        const imgSrc = '/static/' + latest.image_path;
+        const imgSrc = resolveFeedImgUrl(latest.image_path);
         const secEl = document.getElementById('feed-sec-ago');
         const dotEl = document.getElementById('feed-dot');
 
@@ -435,7 +441,7 @@ function renderFeed() {
                 grid.dataset.ids = newIds;
                 grid.innerHTML = recent.map(img => `
                     <div class="card feed-card">
-                        <img src="/static/${img.image_path}" alt="Snapshot" loading="lazy">
+                        <img src="${resolveFeedImgUrl(img.image_path)}" alt="Snapshot" loading="lazy">
                         <div class="feed-info">
                             <span>${img.caption || 'Snapshot'}</span>
                             <span style="color:var(--gray-400);font-size:0.8rem;">${img.seconds_ago}s ago</span>
@@ -458,8 +464,8 @@ function renderFeed() {
             if (filmstrip.dataset.ids !== newHistIds) {
                 filmstrip.dataset.ids = newHistIds;
                 filmstrip.innerHTML = history.map(img => `
-                    <div class="filmstrip-item" title="${img.caption || 'Snapshot'} — ${img.seconds_ago}s ago" onclick="showFilmstripImage('/static/${img.image_path}')">
-                        <img src="/static/${img.image_path}" alt="Snapshot" loading="lazy">
+                    <div class="filmstrip-item" title="${img.caption || 'Snapshot'} — ${img.seconds_ago}s ago" onclick="showFilmstripImage('${resolveFeedImgUrl(img.image_path)}')">
+                        <img src="${resolveFeedImgUrl(img.image_path)}" alt="Snapshot" loading="lazy">
                         <span class="filmstrip-time">${img.seconds_ago}s</span>
                     </div>`).join('');
             }

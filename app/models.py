@@ -95,6 +95,11 @@ class LiveFeedImage(Base):
 
     user = relationship("User", back_populates="live_feed_images")
 
+    @property
+    def url(self) -> str:
+        from app.services.storage_service import get_presigned_or_public_url
+        return get_presigned_or_public_url(self)
+
     __table_args__ = (
         Index("idx_livefeed_user_time", "user_id", "uploaded_at"),
     )

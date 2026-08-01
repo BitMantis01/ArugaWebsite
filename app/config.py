@@ -29,3 +29,14 @@ API_KEY = os.getenv("ARUGA_API_KEY", "aruga-dev-key-change-in-production")
 SECRET_KEY = os.getenv("SECRET_KEY", "aruga-secret-key-change-in-production-2026")
 UPLOAD_DIR = BASE_DIR / "static" / "uploads" / "live_feed"
 PARAMETER_PATH = APP_DIR / "parameter.json"
+
+# Cloudflare R2 Storage Settings
+R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "")
+R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
+R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME", "")
+R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "")
+
+# Live Feed Storage Quotas & Cost-Protection Rate Limits
+MAX_LIVE_FEED_IMAGES_PER_USER = int(os.getenv("MAX_LIVE_FEED_IMAGES_PER_USER", "150"))
+LIVE_FEED_MIN_SAVE_INTERVAL_SECONDS = float(os.getenv("LIVE_FEED_MIN_SAVE_INTERVAL_SECONDS", "3.0"))

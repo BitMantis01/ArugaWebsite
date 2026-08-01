@@ -1,15 +1,25 @@
 import os
 import json
+import time
 from datetime import datetime
 from typing import Dict, Set
 from fastapi import APIRouter, Request, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from app.config import API_KEY, UPLOAD_DIR
+from app.config import (
+    API_KEY,
+    UPLOAD_DIR,
+    LIVE_FEED_MIN_SAVE_INTERVAL_SECONDS,
+    MAX_LIVE_FEED_IMAGES_PER_USER,
+)
 from app.database import SessionLocal, get_db
 from app.models import User, LiveFeedImage
 from app.routers.auth import require_user
+from app.services.storage_service import (
+    upload_live_feed_image,
+    enforce_account_image_limit,
+)
 
 router = APIRouter(tags=["live_feed"])
 
@@ -44,6 +54,8 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
+# Rate-limiting tracker: patient_id -> timestamp of last saved frame
+last_saved_time: Dict[int, float] = {}
 
 
 @router.websocket("/ws/server/image/{patient_id}")
@@ -85,23 +97,30 @@ async def ws_server_image(patient_id: int, ws: WebSocket):
         if not data or len(data) < 3 or data[:3] != b"\xff\xd8\xff":
             continue  # skip non-JPEG
 
+        # --- Cost Protection Rate-Limiting ---
+        current_time = time.time()
+        last_time = last_saved_time.get(patient_id, 0.0)
+        if (current_time - last_time) < LIVE_FEED_MIN_SAVE_INTERVAL_SECONDS:
+            # Frame arrived too fast: skip saving to R2/DB to save Class A operations and bandwidth
+            continue
+
+        last_saved_time[patient_id] = current_time
+
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
         filename = f"{timestamp}.jpg"
-        patient_dir = UPLOAD_DIR / str(patient_id)
-        os.makedirs(patient_dir, exist_ok=True)
-        file_path = patient_dir / filename
-
-        with open(file_path, "wb") as f:
-            f.write(data)
-
-        relative_path = f"uploads/live_feed/{patient_id}/{filename}"
         now = datetime.utcnow()
 
         db = SessionLocal()
         try:
+            # 1. Enforce max 150 images per account quota (deletes oldest excess images)
+            enforce_account_image_limit(patient_id, db, max_limit=MAX_LIVE_FEED_IMAGES_PER_USER)
+
+            # 2. Upload to Cloudflare R2 (or fallback to local disk)
+            stored_url_or_path = upload_live_feed_image(patient_id, filename, data)
+
             image_record = LiveFeedImage(
                 user_id=patient_id,
-                image_path=relative_path,
+                image_path=stored_url_or_path,
                 caption=f"Snapshot {timestamp}",
                 uploaded_at=now,
             )
@@ -109,10 +128,11 @@ async def ws_server_image(patient_id: int, ws: WebSocket):
             db.commit()
             db.refresh(image_record)
 
+            # 3. Broadcast new image to active dashboard viewers
             await manager.broadcast_image(patient_id, {
                 "type": "new_image",
                 "id": image_record.id,
-                "image_path": relative_path,
+                "image_path": image_record.url,
                 "caption": image_record.caption,
                 "uploaded_at": now.isoformat(),
                 "seconds_ago": 0,
@@ -182,7 +202,7 @@ def api_live_feed(
     return JSONResponse([
         {
             "id": img.id,
-            "image_path": img.image_path,
+            "image_path": img.url,
             "caption": img.caption,
             "uploaded_at": img.uploaded_at.isoformat(),
             "seconds_ago": int((now - img.uploaded_at).total_seconds()) if img.uploaded_at else 0,

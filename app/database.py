@@ -42,7 +42,11 @@ def get_db():
 
 
 def migrate_db():
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        # Ignore race conditions when multiple workers run create_all simultaneously
+        pass
     if DATABASE_URL.startswith("sqlite"):
         with engine.connect() as conn:
             from sqlalchemy import text

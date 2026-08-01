@@ -133,8 +133,8 @@
                 <div class="card-header"><h3>Current Snapshot</h3></div>
                 <div id="feed-main-container">
                     {% set latest_feed = live_feed[0] if live_feed else None %}
-                    {% if latest_feed and latest_feed.image_path %}
-                    <img src="/static/{{ latest_feed.image_path }}" alt="Live Feed" class="main-snapshot" id="feed-main-img">
+                    {% if latest_feed and latest_feed.url %}
+                    <img src="{{ latest_feed.url }}" alt="Live Feed" class="main-snapshot" id="feed-main-img">
                     {% else %}
                     <div class="snapshot-placeholder-large" id="feed-main-placeholder">WAITING FOR FEED...</div>
                     {% endif %}
@@ -148,8 +148,8 @@
                     {% if live_feed %}
                         {% for img in live_feed[:4] %}
                         <div class="card feed-card">
-                            {% if img.image_path %}
-                            <img src="/static/{{ img.image_path }}" alt="Snapshot">
+                            {% if img.url %}
+                            <img src="{{ img.url }}" alt="Snapshot">
                             {% else %}
                             <div class="feed-placeholder">SNAP</div>
                             {% endif %}
@@ -174,9 +174,9 @@
                 <div class="filmstrip" id="feed-filmstrip" style="display:none;">
                     {% if live_feed and live_feed[4:16] %}
                         {% for img in live_feed[4:16] %}
-                        {% if img.image_path %}
-                        <div class="filmstrip-item" title="{{ img.caption or 'Snapshot' }} — {{ ((now() - img.uploaded_at).total_seconds()|int) }}s ago" onclick="showFilmstripImage('/static/{{ img.image_path }}')">
-                            <img src="/static/{{ img.image_path }}" alt="Snapshot" loading="lazy">
+                        {% if img.url %}
+                        <div class="filmstrip-item" title="{{ img.caption or 'Snapshot' }} — {{ ((now() - img.uploaded_at).total_seconds()|int) }}s ago" onclick="showFilmstripImage('{{ img.url }}')">
+                            <img src="{{ img.url }}" alt="Snapshot" loading="lazy">
                             <span class="filmstrip-time">{{ ((now() - img.uploaded_at).total_seconds()|int) }}s</span>
                         </div>
                         {% endif %}
