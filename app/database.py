@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from app.config import BASE_DIR
@@ -8,10 +9,16 @@ raw_db_url = os.getenv("DATABASE_URL")
 if raw_db_url:
     if raw_db_url.startswith("postgres://"):
         DATABASE_URL = raw_db_url.replace("postgres://", "postgresql://", 1)
+    elif raw_db_url.startswith("sqlite:///"):
+        db_filename = raw_db_url.replace("sqlite:///", "", 1)
+        db_path = (BASE_DIR / db_filename).resolve() if not os.isabs(db_filename) else Path(db_filename).resolve()
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        DATABASE_URL = f"sqlite:///{db_path.as_posix()}"
     else:
         DATABASE_URL = raw_db_url
 else:
-    db_path = BASE_DIR / "aruga.db"
+    db_path = (BASE_DIR / "aruga.db").resolve()
+    db_path.parent.mkdir(parents=True, exist_ok=True)
     DATABASE_URL = f"sqlite:///{db_path.as_posix()}"
 
 if DATABASE_URL.startswith("sqlite"):
