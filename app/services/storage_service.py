@@ -2,8 +2,14 @@ import os
 import logging
 from pathlib import Path
 from typing import Optional
-import boto3
-from botocore.config import Config
+try:
+    import boto3
+    from botocore.config import Config
+    HAS_BOTO3 = True
+except ImportError:
+    boto3 = None
+    Config = None
+    HAS_BOTO3 = False
 from sqlalchemy.orm import Session
 
 from app.config import (
@@ -22,8 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 def is_r2_configured() -> bool:
-    """Check if Cloudflare R2 environment credentials are fully provided."""
-    return bool(R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_BUCKET_NAME and R2_ACCOUNT_ID)
+    """Check if Cloudflare R2 environment credentials and boto3 are fully provided."""
+    return bool(HAS_BOTO3 and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_BUCKET_NAME and R2_ACCOUNT_ID)
 
 
 def get_r2_client():

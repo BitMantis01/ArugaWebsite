@@ -21,6 +21,14 @@ let feedImageCache = {};
 let feedSocket = null;
 let feedHttpTimer = null;
 
+function getCsrfHeaders(extra = {}) {
+    const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    return {
+        'x-csrf-token': token,
+        ...extra
+    };
+}
+
 function destroyChart(key) {
     if (charts[key]) { charts[key].destroy(); delete charts[key]; }
 }
@@ -405,6 +413,16 @@ function resolveFeedImgUrl(path) {
     return '/static/' + path.replace(/^\//, '');
 }
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // Apply all images from the ring buffer to the DOM
 function renderFeed() {
     // --- Main snapshot (latest image) ---
@@ -421,7 +439,7 @@ function renderFeed() {
         if (mainContainer) {
             let imgEl = document.getElementById('feed-main-img');
             if (!imgEl) {
-                mainContainer.innerHTML = `<img src="${imgSrc}" alt="Live Feed" class="main-snapshot" id="feed-main-img">`;
+                mainContainer.innerHTML = `<img src="${escapeHtml(imgSrc)}" alt="Live Feed" class="main-snapshot" id="feed-main-img">`;
             } else if (imgEl.getAttribute('data-path') !== latest.image_path) {
                 imgEl.src = imgSrc;
                 imgEl.setAttribute('data-path', latest.image_path);
@@ -441,10 +459,10 @@ function renderFeed() {
                 grid.dataset.ids = newIds;
                 grid.innerHTML = recent.map(img => `
                     <div class="card feed-card">
-                        <img src="${resolveFeedImgUrl(img.image_path)}" alt="Snapshot" loading="lazy">
+                        <img src="${escapeHtml(resolveFeedImgUrl(img.image_path))}" alt="Snapshot" loading="lazy">
                         <div class="feed-info">
-                            <span>${img.caption || 'Snapshot'}</span>
-                            <span style="color:var(--gray-400);font-size:0.8rem;">${img.seconds_ago}s ago</span>
+                            <span>${escapeHtml(img.caption || 'Snapshot')}</span>
+                            <span style="color:var(--gray-400);font-size:0.8rem;">${escapeHtml(img.seconds_ago)}s ago</span>
                         </div>
                     </div>`).join('');
             }
@@ -464,9 +482,9 @@ function renderFeed() {
             if (filmstrip.dataset.ids !== newHistIds) {
                 filmstrip.dataset.ids = newHistIds;
                 filmstrip.innerHTML = history.map(img => `
-                    <div class="filmstrip-item" title="${img.caption || 'Snapshot'} — ${img.seconds_ago}s ago" onclick="showFilmstripImage('${resolveFeedImgUrl(img.image_path)}')">
-                        <img src="${resolveFeedImgUrl(img.image_path)}" alt="Snapshot" loading="lazy">
-                        <span class="filmstrip-time">${img.seconds_ago}s</span>
+                    <div class="filmstrip-item" title="${escapeHtml(img.caption || 'Snapshot')} — ${escapeHtml(img.seconds_ago)}s ago" onclick="showFilmstripImage('${escapeHtml(resolveFeedImgUrl(img.image_path))}')">
+                        <img src="${escapeHtml(resolveFeedImgUrl(img.image_path))}" alt="Snapshot" loading="lazy">
+                        <span class="filmstrip-time">${escapeHtml(img.seconds_ago)}s</span>
                     </div>`).join('');
             }
         }
@@ -596,7 +614,7 @@ function stopFeedPolling() {
 }
 async function markRead(notifId, element) {
     try {
-        await fetch('/api/notifications/' + notifId + '/read', { method: 'POST' });
+        await fetch('/api/notifications/' + notifId + '/read', { method: 'POST', headers: getCsrfHeaders() });
         element.classList.remove('unread');
     } catch (err) {
         console.error('Mark read failed:', err);
@@ -609,7 +627,7 @@ async function markAllRead() {
         const notifs = await resp.json();
         const unread = notifs.filter(n => !n.is_read);
         for (const n of unread) {
-            await fetch('/api/notifications/' + n.id + '/read', { method: 'POST' });
+            await fetch('/api/notifications/' + n.id + '/read', { method: 'POST', headers: getCsrfHeaders() });
         }
         // Refresh the list and badge
         const items = document.querySelectorAll('.notif-item');
@@ -743,7 +761,7 @@ async function saveAge() {
     try {
         const resp = await fetch('/api/profile', {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ age: age })
         });
         if (resp.ok) {
@@ -961,7 +979,7 @@ async function saveMedicineSlot(slotNum) {
     try {
         const resp = await fetch('/api/medicines/slot', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 slot_number: slotNum,
                 name: name,
@@ -993,7 +1011,7 @@ async function markSlotDispensed(slotNum) {
     try {
         const resp = await fetch('/api/medicines/slot', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 slot_number: slotNum,
                 name: name,
@@ -1018,7 +1036,10 @@ async function markSlotDispensed(slotNum) {
 async function resetMedicineSlot(slotNum) {
     if (!confirm(`Are you sure you want to clear Medicine Slot ${slotNum}?`)) return;
     try {
-        const resp = await fetch(`/api/medicines/slot/${slotNum}/reset`, { method: 'POST' });
+        const resp = await fetch(`/api/medicines/slot/${slotNum}/reset`, {
+            method: 'POST',
+            headers: getCsrfHeaders()
+        });
         if (resp.ok) {
             document.getElementById(`med-name-${slotNum}`).value = `Medicine Slot ${slotNum}`;
             document.getElementById(`med-dosage-${slotNum}`).value = '';

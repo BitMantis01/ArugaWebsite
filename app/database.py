@@ -1,8 +1,11 @@
 import os
+import logging
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from app.config import BASE_DIR
+
+logger = logging.getLogger(__name__)
 
 raw_db_url = os.getenv("DATABASE_URL")
 
@@ -24,7 +27,13 @@ else:
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=10,
+        max_overflow=20,
+        pool_timeout=30,
+        pool_pre_ping=True,
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -44,9 +53,9 @@ def get_db():
 def migrate_db():
     try:
         Base.metadata.create_all(bind=engine)
-    except Exception:
-        # Ignore race conditions when multiple workers run create_all simultaneously
-        pass
+    except Exception as e:
+        logger.warning(f"Database table initialization warning: {e}")
+
     if DATABASE_URL.startswith("sqlite"):
         with engine.connect() as conn:
             from sqlalchemy import text
@@ -60,9 +69,10 @@ def migrate_db():
                     conn.execute(text("ALTER TABLE medicines ADD COLUMN is_dispensed BOOLEAN DEFAULT 0"))
                 conn.commit()
             except Exception as e:
-                pass
+                logger.warning(f"SQLite migration step warning: {e}")
 
 
 def init_db():
     migrate_db()
+
 

@@ -1,12 +1,16 @@
+import html
 from typing import Optional
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 import bcrypt
 
 from app.database import get_db
 from app.models import User
 from app.schemas import UserSignup, UserLogin
+from app.services.rate_limiter import auth_limiter, signup_limiter
+from app.services.csrf_service import generate_csrf_token
 
 router = APIRouter(tags=["auth"])
 
@@ -52,65 +56,85 @@ async def parse_request_data(request: Request) -> dict:
 
 @router.post("/api/signup")
 async def api_signup(request: Request, db: Session = Depends(get_db)):
-    payload = await parse_request_data(request)
-    email = str(payload.get("email", "")).lower().strip()
-    password = str(payload.get("password", ""))
-    full_name = str(payload.get("full_name", "")).strip()
+    signup_limiter.check(request, "signup")
 
-    if not email or not password or not full_name:
-        raise HTTPException(status_code=400, detail="Email, password, and full name are required")
+    raw_payload = await parse_request_data(request)
+    try:
+        data = UserSignup(**raw_payload)
+    except ValidationError as e:
+        error_msg = e.errors()[0].get("msg", "Invalid input data")
+        raise HTTPException(status_code=400, detail=error_msg)
 
+    email = data.email.strip().lower()
     existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email is already registered")
 
-    def safe_int(v):
-        try: return int(v) if v is not None and str(v).strip() != "" else None
-        except: return None
-
-    def safe_float(v):
-        try: return float(v) if v is not None and str(v).strip() != "" else None
-        except: return None
+    # HTML-escape full name to prevent XSS injection
+    sanitized_full_name = html.escape(data.full_name.strip())
 
     user = User(
         email=email,
-        password_hash=hash_password(password),
-        full_name=full_name,
-        age=safe_int(payload.get("age")),
-        gender=payload.get("gender") or None,
-        blood_type=payload.get("blood_type") or None,
-        height_cm=safe_float(payload.get("height_cm")),
-        weight_kg=safe_float(payload.get("weight_kg")),
-        medical_conditions=payload.get("medical_conditions") or None,
-        emergency_contact_name=payload.get("emergency_contact_name") or None,
-        emergency_contact_phone=payload.get("emergency_contact_phone") or None,
+        password_hash=hash_password(data.password),
+        full_name=sanitized_full_name,
+        age=data.age,
+        gender=data.gender,
+        blood_type=data.blood_type,
+        height_cm=data.height_cm,
+        weight_kg=data.weight_kg,
+        medical_conditions=html.escape(data.medical_conditions) if data.medical_conditions else None,
+        emergency_contact_name=html.escape(data.emergency_contact_name) if data.emergency_contact_name else None,
+        emergency_contact_phone=data.emergency_contact_phone,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
+    # Session fixation defense: regenerate session cleanly upon signup
+    request.session.clear()
     request.session["user_id"] = user.id
-    return JSONResponse({"status": "ok", "user_id": user.id, "message": "Account created successfully"}, status_code=201)
+    request.session["csrf_token"] = generate_csrf_token()
+
+    return JSONResponse({
+        "status": "ok",
+        "user_id": user.id,
+        "message": "Account created successfully",
+        "csrf_token": request.session["csrf_token"]
+    }, status_code=201)
 
 
 @router.post("/api/login")
 async def api_login(request: Request, db: Session = Depends(get_db)):
-    payload = await parse_request_data(request)
-    email = str(payload.get("email", "")).lower().strip()
-    password = str(payload.get("password", ""))
+    auth_limiter.check(request, "login")
 
-    if not email or not password:
-        raise HTTPException(status_code=400, detail="Email and password are required")
+    raw_payload = await parse_request_data(request)
+    try:
+        data = UserLogin(**raw_payload)
+    except ValidationError as e:
+        error_msg = e.errors()[0].get("msg", "Invalid email or password format")
+        raise HTTPException(status_code=400, detail=error_msg)
 
+    email = data.email.strip().lower()
     user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(password, user.password_hash):
+    if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    # Session fixation defense: clear old unauthenticated session and issue new token
+    request.session.clear()
     request.session["user_id"] = user.id
-    return JSONResponse({"status": "ok", "user_id": user.id, "message": "Logged in successfully"})
+    request.session["csrf_token"] = generate_csrf_token()
+
+    return JSONResponse({
+        "status": "ok",
+        "user_id": user.id,
+        "message": "Logged in successfully",
+        "csrf_token": request.session["csrf_token"]
+    })
 
 
-@router.get("/api/logout")
+@router.post("/api/logout")
 def api_logout(request: Request):
     request.session.clear()
     return JSONResponse({"status": "ok", "message": "Logged out successfully"})
+
+

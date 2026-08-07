@@ -12,7 +12,10 @@
         <a href="/">Home</a>
         {% if user %}
         <a href="/dashboard">Dashboard</a>
-        <a href="/api/logout" class="btn btn-outline btn-sm">Logout</a>
+        <form action="/api/logout" method="POST" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ get_csrf_token(request) }}">
+            <button type="submit" class="btn btn-outline btn-sm">Logout</button>
+        </form>
         {% else %}
         <a href="/login">Login</a>
         <a href="/signup" class="btn btn-pink btn-sm">Get Started</a>

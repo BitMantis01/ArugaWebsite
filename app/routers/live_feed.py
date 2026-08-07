@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import hmac
 from datetime import datetime
 from typing import Dict, Set
 from fastapi import APIRouter, Request, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
@@ -71,7 +72,7 @@ async def ws_server_image(patient_id: int, ws: WebSocket):
     if key.lower().startswith("x-api-key:"):
         key = key.split(":", 1)[1].strip()
 
-    if key != API_KEY:
+    if not hmac.compare_digest(key, API_KEY):
         await ws.send_text("ERROR: Invalid API key")
         await ws.close(code=4001)
         return
@@ -162,6 +163,13 @@ async def ws_live_feed(ws: WebSocket):
         await ws.close(code=4000)
         return
 
+    # Session authentication check
+    session_user_id = ws.session.get("user_id") if hasattr(ws, "session") else None
+    if not session_user_id or session_user_id != patient_id:
+        await ws.send_text("ERROR: Unauthorized session")
+        await ws.close(code=4003)
+        return
+
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.id == patient_id).first()
@@ -182,6 +190,7 @@ async def ws_live_feed(ws: WebSocket):
         pass
     finally:
         manager.disconnect_viewer(patient_id, ws)
+
 
 
 @router.get("/api/live-feed")

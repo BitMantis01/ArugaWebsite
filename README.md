@@ -113,8 +113,11 @@ cp .env.example .env
 ```
 Edit `.env`:
 ```env
+ENVIRONMENT=development
 ARUGA_API_KEY=aruga-dev-key-change-in-production
 SECRET_KEY=aruga-secret-key-change-in-production-2026
+ENABLE_DEBUG_ENDPOINTS=true
+ENABLE_API_DOCS=true
 ```
 
 ### 5. Run the Server
@@ -124,6 +127,17 @@ python main.py
 uvicorn main.py:app --reload --host 0.0.0.0 --port 8000
 ```
 Open your browser and navigate to **`http://localhost:8000`**.
+
+---
+
+## 🔒 Security & Data Protection
+
+ARUGA is designed with robust security measures to protect Protected Health Information (PHI):
+- **Password Security**: Bcrypt auto-salted hashing with server-side length enforcement (minimum 8 characters).
+- **Session Protection**: `SameSite=lax` cookie policy, 24-hour expiration, `https_only` in production mode, and POST-only logout.
+- **WebSocket Authorization**: Live feed streams require authenticated patient session cookies.
+- **Constant-Time Verification**: Hardware API key validation uses `hmac.compare_digest` to prevent timing attacks.
+- **Hardened HTTP Headers**: Automatic `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`, and `HSTS` header injection.
 
 ---
 
@@ -141,15 +155,17 @@ This script generates synthetic vital sign streams for Patient ID `1` every 5 se
 
 | Protocol | Method | Endpoint | Description |
 | :--- | :--- | :--- | :--- |
-| **HTTP** | `POST` | `/api/signup` | Register a new user account |
+| **HTTP** | `POST` | `/api/signup` | Register a new user account (min 8 char password) |
 | **HTTP** | `POST` | `/api/login` | Authenticate user and initiate session |
+| **HTTP** | `POST` | `/api/logout` | Terminate active user session |
 | **HTTP** | `GET` | `/api/vitals/latest` | Fetch most recent vital sign record |
 | **HTTP** | `GET` | `/api/vitals/history` | Query historical vitals telemetry |
 | **HTTP** | `GET` | `/api/predictions` | Calculate 20-step ARIMA vitals forecast |
-| **HTTP** | `POST` | `/api/server/vitals-hr/{patient_id}` | ESP32 vital signs submission |
-| **HTTP** | `GET` | `/api/esp32/alerts/{patient_id}` | ESP32 display payload & alert query |
+| **HTTP** | `POST` | `/api/server/vitals-hr/{patient_id}` | ESP32 vital signs submission (x-api-key required) |
+| **HTTP** | `GET` | `/api/esp32/alerts/{patient_id}` | ESP32 display payload & alert query (x-api-key required) |
 | **WS** | `WS` | `/ws/server/image/{patient_id}` | ESP32-CAM JPEG binary frame stream |
-| **WS** | `WS` | `/ws/live-feed` | Dashboard real-time live feed subscription |
+| **WS** | `WS` | `/ws/live-feed` | Dashboard real-time live feed subscription (session authenticated) |
+
 
 ---
 

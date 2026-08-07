@@ -27,7 +27,7 @@ ARUGA is designed around a modular decoupled architecture:
 [ Remote Caregiver Browser] <--- WS /ws/live-feed & REST APIs           <--- [ FastAPI Routers ]
 ```
 
-- **[app/config.py](app/config.py)**: Centralizes environment variables (`ARUGA_API_KEY`, `SECRET_KEY`) loaded from `.env`.
+- **[app/config.py](app/config.py)**: Centralizes environment variables (`ENVIRONMENT`, `ARUGA_API_KEY`, `SECRET_KEY`, `ENABLE_DEBUG_ENDPOINTS`, `ENABLE_API_DOCS`) loaded from `.env`.
 - **[app/models.py](app/models.py)**: SQLAlchemy ORM models (`User`, `VitalRecord`, `Medicine`, `Notification`, `LiveFeedImage`) with indexing for fast lookups.
 - **[app/services/vitals_service.py](app/services/vitals_service.py)**: Evaluates physiological data against clinical parameters in `app/parameter.json`.
 - **[app/services/prediction_service.py](app/services/prediction_service.py)**: Executes ARIMA time-series forecasting.
@@ -68,7 +68,7 @@ Open `app/parameter.json`. Each block defines normal, at-risk, and critical boun
 ## 3. How the API & Hardware Interfaces Work
 
 ### A. ESP32 Vitals Submission (`POST /api/server/vitals-hr/{patient_id}`)
-- **Authentication**: Requires header `x-api-key: <YOUR_API_KEY>` matching `ARUGA_API_KEY` in `.env`.
+- **Authentication**: Requires header `x-api-key: <YOUR_API_KEY>` matching `ARUGA_API_KEY` in `.env` (validated using constant-time `hmac.compare_digest`).
 - **Payload Format (JSON)**:
   ```json
   {
@@ -99,12 +99,12 @@ Used by physical LCD screens on the companion robot. Returns structured line con
 
 ### C. Live Camera Feed WebSocket (`/ws/server/image/{patient_id}`)
 1. ESP32-CAM opens WebSocket connection to `/ws/server/image/1`.
-2. First text message sent: `x-api-key: YOUR_ARUGA_API_KEY`.
+2. First text message sent: `x-api-key: YOUR_ARUGA_API_KEY` (verified in constant time).
 3. Subsequent binary messages: Raw JPEG frame bytes (`b"\xff\xd8\xff..."`).
-4. Server saves frames to `static/uploads/live_feed/1/` and broadcasts metadata to dashboard viewers over `/ws/live-feed`.
+4. Server saves frames to `static/uploads/live_feed/1/` and broadcasts metadata to dashboard viewers over `/ws/live-feed` (requires active patient session).
 
 ### D. Debug Overrides (`POST /api/debug/override/{patient_id}`)
-Allows testing emergency alerts without hardware sensors:
+Allows testing emergency alerts without hardware sensors (gated by `ENABLE_DEBUG_ENDPOINTS=true`):
 ```json
 {
   "smsalert": true,
@@ -114,6 +114,27 @@ Allows testing emergency alerts without hardware sensors:
   "alert": true
 }
 ```
+
+---
+
+## 🔒 Security Architecture
+
+ARUGA implements security best practices to protect sensitive patient health data:
+
+1. **Authentication & Session Management**:
+   - Passwords hashed using `bcrypt` with automatic salt generation.
+   - Server-side password strength validation (minimum 8 characters).
+   - Session cookies configured with `SameSite=lax`, `SameSite` enforcement, `max_age=86400` (24-hour expiry), and `https_only` in production environments.
+   - Logout is strictly restricted to `POST /api/logout` to prevent image-tag GET CSRF attacks.
+
+2. **WebSocket Session Authorization**:
+   - `/ws/live-feed` verifies the subscriber's session cookie (`session_user_id == patient_id`) before streaming live camera frames.
+
+3. **API Protection & Defense in Depth**:
+   - Constant-time string comparison (`hmac.compare_digest`) for device `x-api-key` validation to prevent timing attacks.
+   - HTTP Security Headers added to all responses: `X-Content-Type-Options`, `X-Frame-Options: DENY`, `X-XSS-Protection`, `Referrer-Policy`, and `HSTS`.
+   - Production guards: Swagger/OpenAPI docs (`/docs`, `/openapi.json`) can be disabled via `ENABLE_API_DOCS=false`, and debug overrides can be disabled via `ENABLE_DEBUG_ENDPOINTS=false`.
+
 
 ---
 

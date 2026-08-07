@@ -1,10 +1,11 @@
+import hmac
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from app.config import API_KEY
+from app.config import API_KEY, ENABLE_DEBUG_ENDPOINTS
 from app.database import get_db
 from app.models import User, VitalRecord, Notification, Medicine
 
@@ -28,10 +29,16 @@ DEFAULT_DEBUG_OVERRIDE = {
 
 
 def verify_api_key(request: Request):
-    """Verify x-api-key header. Raises 401 if missing or invalid."""
+    """Verify x-api-key header using constant-time comparison. Raises 401 if missing or invalid."""
     key = request.headers.get("x-api-key")
-    if not key or key != API_KEY:
+    if not key or not hmac.compare_digest(key, API_KEY):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+
+def verify_debug_enabled():
+    """Ensure debug override endpoints are enabled in configuration."""
+    if not ENABLE_DEBUG_ENDPOINTS:
+        raise HTTPException(status_code=403, detail="Debug endpoints are disabled in production environment")
 
 
 @router.post("/api/server/vitals-hr/{patient_id}")
@@ -268,6 +275,7 @@ async def api_esp32_alerts(
 @router.get("/api/debug/override/{patient_id}")
 def api_get_debug_override(patient_id: int, request: Request):
     verify_api_key(request)
+    verify_debug_enabled()
     return JSONResponse(_debug_overrides.get(patient_id, dict(DEFAULT_DEBUG_OVERRIDE)))
 
 
@@ -278,6 +286,7 @@ async def api_set_debug_override(
     db: Session = Depends(get_db),
 ):
     verify_api_key(request)
+    verify_debug_enabled()
 
     user = db.query(User).filter(User.id == patient_id).first()
     if not user:
@@ -300,5 +309,7 @@ async def api_set_debug_override(
 @router.delete("/api/debug/override/{patient_id}")
 def api_clear_debug_override(patient_id: int, request: Request):
     verify_api_key(request)
+    verify_debug_enabled()
     _debug_overrides.pop(patient_id, None)
     return JSONResponse({"status": "cleared"})
+

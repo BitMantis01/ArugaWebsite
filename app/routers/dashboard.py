@@ -8,11 +8,14 @@ from app.database import get_db
 from app.models import User, VitalRecord, Medicine, Notification, LiveFeedImage
 from app.routers.auth import get_current_user
 
+from app.services.csrf_service import get_csrf_token
+
 router = APIRouter(tags=["dashboard"])
 templates = Jinja2Templates(directory="templates")
 
 # Register Jinja2 global functions
 templates.env.globals["now"] = datetime.utcnow
+templates.env.globals["get_csrf_token"] = get_csrf_token
 
 
 @router.get("/", response_class=HTMLResponse)

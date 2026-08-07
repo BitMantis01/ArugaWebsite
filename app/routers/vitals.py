@@ -73,6 +73,16 @@ def api_vitals_history(
     ])
 
 
+def sanitize_csv_cell(val) -> str:
+    """Sanitize CSV cell against formula injection (=, +, -, @, tab, CR)."""
+    if val is None:
+        return ""
+    s = str(val)
+    if s and s[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return f"'{s}"
+    return s
+
+
 @router.get("/api/vitals/export")
 def api_export_vitals(
     request: Request,
@@ -101,14 +111,14 @@ def api_export_vitals(
 
     for r in records:
         writer.writerow([
-            r.id,
-            r.recorded_at.isoformat() if r.recorded_at else "",
-            r.spo2 if r.spo2 is not None else "",
-            r.heart_rate if r.heart_rate is not None else "",
-            r.temperature if r.temperature is not None else "",
-            r.systolic_bp if r.systolic_bp is not None else "",
-            r.diastolic_bp if r.diastolic_bp is not None else "",
-            "Yes" if r.sensor_error else "No"
+            sanitize_csv_cell(r.id),
+            sanitize_csv_cell(r.recorded_at.isoformat() if r.recorded_at else ""),
+            sanitize_csv_cell(r.spo2),
+            sanitize_csv_cell(r.heart_rate),
+            sanitize_csv_cell(r.temperature),
+            sanitize_csv_cell(r.systolic_bp),
+            sanitize_csv_cell(r.diastolic_bp),
+            sanitize_csv_cell("Yes" if r.sensor_error else "No")
         ])
 
     csv_content = output.getvalue()
@@ -118,6 +128,7 @@ def api_export_vitals(
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
+
 
 
 @router.get("/api/predictions")
