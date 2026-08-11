@@ -218,3 +218,62 @@ def api_live_feed(
         }
         for img in images
     ])
+
+
+@router.post("/api/server/image/{patient_id}")
+async def api_upload_server_image(
+    patient_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """HTTP POST endpoint for ESP32-CAM to upload camera frame bytes."""
+    key = request.headers.get("x-api-key")
+    if not key or not hmac.compare_digest(key, API_KEY):
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+    user = db.query(User).filter(User.id == patient_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
+
+    data = await request.body()
+    if not data or len(data) < 3 or data[:3] != b"\xff\xd8\xff":
+        raise HTTPException(status_code=400, detail="Invalid JPEG image data")
+
+    current_time = time.time()
+    last_time = last_saved_time.get(patient_id, 0.0)
+    if (current_time - last_time) < LIVE_FEED_MIN_SAVE_INTERVAL_SECONDS:
+        return JSONResponse({"status": "skipped", "message": "Rate limited"}, status_code=200)
+
+    last_saved_time[patient_id] = current_time
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
+    filename = f"{timestamp}.jpg"
+    now = datetime.utcnow()
+
+    enforce_account_image_limit(patient_id, db, max_limit=MAX_LIVE_FEED_IMAGES_PER_USER)
+    stored_url_or_path = upload_live_feed_image(patient_id, filename, data)
+
+    image_record = LiveFeedImage(
+        user_id=patient_id,
+        image_path=stored_url_or_path,
+        caption=f"Snapshot {timestamp}",
+        uploaded_at=now,
+    )
+    db.add(image_record)
+    db.commit()
+    db.refresh(image_record)
+
+    await manager.broadcast_image(patient_id, {
+        "type": "new_image",
+        "id": image_record.id,
+        "image_path": image_record.url,
+        "caption": image_record.caption,
+        "uploaded_at": now.isoformat(),
+        "seconds_ago": 0,
+    })
+
+    return JSONResponse({
+        "status": "ok",
+        "id": image_record.id,
+        "image_path": image_record.url,
+    }, status_code=201)
