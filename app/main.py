@@ -44,11 +44,11 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self' https://aruga.bitmantis.xyz; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
         "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; "
         "img-src 'self' data: blob: https:; "
-        "connect-src 'self' ws: wss: wss://aruga.bitmantis.xyz https://aruga.bitmantis.xyz; "
+        "connect-src 'self' ws: wss: wss://aruga.bitmantis.xyz https://aruga.bitmantis.xyz https://cdn.jsdelivr.net https://cloudflareinsights.com https://static.cloudflareinsights.com; "
         "frame-ancestors 'none';"
     )
     if ENVIRONMENT == "production" or request.url.scheme == "https":

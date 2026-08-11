@@ -813,6 +813,9 @@ async function toggleProfileSmsAlerts(enabled) {
     await saveSmsAlertSetting();
 }
 
+window.saveSmsAlertSetting = saveSmsAlertSetting;
+window.toggleProfileSmsAlerts = toggleProfileSmsAlerts;
+
 // ─── Debug Tab ──────────────────────────────────────────────
 async function refreshDebugPreview() {
     const pre = document.getElementById('debug-preview');
