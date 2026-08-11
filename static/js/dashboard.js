@@ -773,10 +773,14 @@ async function saveAge() {
     } catch (err) { alert('Error: ' + err.message); }
 }
 
-async function toggleProfileSmsAlerts(enabled) {
+async function saveSmsAlertSetting() {
+    const toggleEl = document.getElementById('profile-sms-alerts-toggle');
+    if (!toggleEl) return;
+    const enabled = toggleEl.checked;
     const badge = document.getElementById('sms-alerts-status-badge');
     const toast = document.getElementById('sms-alerts-saved-toast');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
     try {
         const resp = await fetch('/api/profile', {
             method: 'PATCH',
@@ -786,6 +790,7 @@ async function toggleProfileSmsAlerts(enabled) {
                 csrf_token: csrfToken
             })
         });
+
         if (resp.ok) {
             if (badge) {
                 badge.textContent = enabled ? 'Active' : 'Disabled';
@@ -793,19 +798,19 @@ async function toggleProfileSmsAlerts(enabled) {
             }
             if (toast) {
                 toast.style.display = 'inline-block';
-                setTimeout(() => { toast.style.display = 'none'; }, 2500);
+                setTimeout(() => { toast.style.display = 'none'; }, 3000);
             }
         } else {
             const errData = await resp.json().catch(() => ({}));
-            alert('Failed to update SMS alert setting: ' + (errData.detail || resp.statusText || 'Server error'));
-            const toggleEl = document.getElementById('profile-sms-alerts-toggle');
-            if (toggleEl) toggleEl.checked = !enabled;
+            alert('Failed to save SMS alert setting: ' + (errData.detail || resp.statusText || 'Server error'));
         }
     } catch (err) {
-        alert('Error updating SMS alert setting: ' + err.message);
-        const toggleEl = document.getElementById('profile-sms-alerts-toggle');
-        if (toggleEl) toggleEl.checked = !enabled;
+        alert('Error saving SMS alert setting: ' + err.message);
     }
+}
+
+async function toggleProfileSmsAlerts(enabled) {
+    await saveSmsAlertSetting();
 }
 
 // ─── Debug Tab ──────────────────────────────────────────────
