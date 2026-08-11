@@ -67,6 +67,16 @@ def migrate_db():
                     conn.execute(text("ALTER TABLE medicines ADD COLUMN scheduled_datetime DATETIME"))
                 if "is_dispensed" not in columns:
                     conn.execute(text("ALTER TABLE medicines ADD COLUMN is_dispensed BOOLEAN DEFAULT 0"))
+
+                user_columns = [row[1] for row in conn.execute(text("PRAGMA table_info(users)")).fetchall()]
+                if "enable_sms_alerts" not in user_columns:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN enable_sms_alerts BOOLEAN DEFAULT 1"))
+                if "last_sms_alert_no" not in user_columns:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN last_sms_alert_no INTEGER DEFAULT 0"))
+                if "last_sms_alert_time" not in user_columns:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN last_sms_alert_time DATETIME"))
+                if "last_sms_alert_vital_id" not in user_columns:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN last_sms_alert_vital_id INTEGER"))
                 conn.commit()
             except Exception as e:
                 logger.warning(f"SQLite migration step warning: {e}")

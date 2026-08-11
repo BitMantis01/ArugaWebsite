@@ -773,6 +773,29 @@ async function saveAge() {
     } catch (err) { alert('Error: ' + err.message); }
 }
 
+async function toggleProfileSmsAlerts(enabled) {
+    const badge = document.getElementById('sms-alerts-status-badge');
+    try {
+        const resp = await fetch('/api/profile', {
+            method: 'PATCH',
+            headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ enable_sms_alerts: enabled })
+        });
+        if (resp.ok) {
+            if (badge) {
+                badge.textContent = enabled ? 'Active' : 'Disabled';
+                badge.style.background = enabled ? 'var(--pink-600)' : 'var(--gray-400)';
+            }
+        } else {
+            alert('Failed to update SMS alert setting');
+            document.getElementById('profile-sms-alerts-toggle').checked = !enabled;
+        }
+    } catch (err) {
+        alert('Error updating SMS alert setting: ' + err.message);
+        document.getElementById('profile-sms-alerts-toggle').checked = !enabled;
+    }
+}
+
 // ─── Debug Tab ──────────────────────────────────────────────
 async function refreshDebugPreview() {
     const pre = document.getElementById('debug-preview');
@@ -799,6 +822,9 @@ async function applyDebugOverrides() {
 
     const smsmsg = document.getElementById('debug-smsalertmsg')?.value;
     if (smsmsg) body.smsalertmsg = smsmsg;
+
+    const smsno = document.getElementById('debug-smsalertno')?.value;
+    if (smsno !== undefined && smsno !== '') body.smsalertno = parseInt(smsno);
 
     const med = document.getElementById('debug-meddispense')?.value;
     if (med !== undefined && med !== '') body.medicinedispense = parseInt(med);

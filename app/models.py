@@ -19,6 +19,10 @@ class User(Base):
     medical_conditions = Column(Text, nullable=True)
     emergency_contact_name = Column(String(255), nullable=True)
     emergency_contact_phone = Column(String(50), nullable=True)
+    enable_sms_alerts = Column(Boolean, default=True, nullable=False)
+    last_sms_alert_no = Column(Integer, default=0, nullable=False)
+    last_sms_alert_time = Column(DateTime, nullable=True)
+    last_sms_alert_vital_id = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     vitals = relationship("VitalRecord", back_populates="user")

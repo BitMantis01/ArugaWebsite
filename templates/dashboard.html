@@ -261,7 +261,7 @@
             <div class="notif-list" id="notif-list">
                 {% for n in notifications %}
                 <div class="notif-item {{ 'unread' if not n.is_read else '' }} level-{{ n.level }}"
-                     data-id="{{ n.id }}" onclick="markRead({{ n.id }}, this)">
+                     data-id="{{ n.id }}" onclick="markRead('{{ n.id }}', this)">
                     <div class="notif-icon">
                         {% if n.level == 'critical' %}[CRITICAL]{% elif n.level == 'warning' %}[WARNING]{% else %}[INFO]{% endif %}
                     </div>
@@ -327,6 +327,18 @@
                         <div class="pf-label">Contact Phone</div>
                         <div class="pf-value">{{ user.emergency_contact_phone or '—' }}</div>
                     </div>
+                    <div class="profile-field" style="grid-column:span 2;">
+                        <div class="pf-label">Emergency SMS Alerts</div>
+                        <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.25rem;">
+                            <label style="display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:600;color:var(--gray-800);">
+                                <input type="checkbox" id="profile-sms-alerts-toggle" {% if user.enable_sms_alerts %}checked{% endif %} onchange="toggleProfileSmsAlerts(this.checked)" style="width:20px;height:20px;accent-color:var(--pink-600);">
+                                <span>Enable Emergency GSM SMS Alerts</span>
+                            </label>
+                            <span id="sms-alerts-status-badge" class="badge" style="background: {{ 'var(--pink-600)' if user.enable_sms_alerts else 'var(--gray-400)' }}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem;">
+                                {{ 'Active' if user.enable_sms_alerts else 'Disabled' }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div style="margin-top:1.5rem;">
@@ -384,11 +396,10 @@
                             Status: <span style="font-weight:600;color:var(--gray-700);">Not set</span>
                         </div>
                         <div style="display:flex;gap:0.5rem;">
-                            <button class="btn btn-sm" id="med-dispense-btn-{{ slot_idx }}" style="background:#10b981;color:white;display:none;" onclick="markSlotDispensed({{ slot_idx }})"><i class="fa-solid fa-check"></i> Mark Dispensed</button>
-                            <button class="btn btn-outline btn-sm" onclick="resetMedicineSlot({{ slot_idx }})">Clear Slot</button>
-                            <button class="btn btn-pink btn-sm" onclick="saveMedicineSlot({{ slot_idx }})">Save Slot {{ slot_idx }}</button>
+                            <button class="btn btn-sm" id="med-dispense-btn-{{ slot_idx }}" style="background:#10b981;color:white;display:none;" onclick="markSlotDispensed('{{ slot_idx }}')"><i class="fa-solid fa-check"></i> Mark Dispensed</button>
+                            <button class="btn btn-outline btn-sm" onclick="resetMedicineSlot('{{ slot_idx }}')">Clear Slot</button>
+                            <button class="btn btn-pink btn-sm" onclick="saveMedicineSlot('{{ slot_idx }}')">Save Slot {{ slot_idx }}</button>
                         </div>
-
                     </div>
                 </div>
                 {% endfor %}
@@ -410,13 +421,18 @@
                     <div class="form-group">
                         <label>SMS Alert</label>
                         <select id="debug-smsalert">
-                            <option value="false">Off</option>
-                            <option value="true">On</option>
+                            <option value="">Auto (Profile setting)</option>
+                            <option value="false">Force Off</option>
+                            <option value="true">Force On</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>SMS Alert Message</label>
-                        <input type="text" id="debug-smsalertmsg" placeholder="e.g. Patient needs attention">
+                        <input type="text" id="debug-smsalertmsg" placeholder="e.g. CRITICAL: High HR (135 BPM)">
+                    </div>
+                    <div class="form-group">
+                        <label>SMS Alert No (Sequence Counter)</label>
+                        <input type="number" id="debug-smsalertno" placeholder="Auto counter (or force integer)" min="0">
                     </div>
                     <div class="form-group">
                         <label>Medicine Dispense</label>

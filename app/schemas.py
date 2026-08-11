@@ -52,6 +52,7 @@ class ProfileUpdate(BaseModel):
     medical_conditions: Optional[str] = Field(None, max_length=2000)
     emergency_contact_name: Optional[str] = Field(None, max_length=255)
     emergency_contact_phone: Optional[str] = Field(None, max_length=50)
+    enable_sms_alerts: Optional[bool] = None
 
 
 class VitalsUploadPayload(BaseModel):
@@ -69,6 +70,7 @@ class VitalsUploadPayload(BaseModel):
 class DebugOverridePayload(BaseModel):
     smsalert: Optional[bool] = None
     smsalertmsg: Optional[str] = Field(None, max_length=500)
+    smsalertno: Optional[int] = None
     medicinedispense: Optional[int] = None
     move: Optional[bool] = None
     led: Optional[str] = Field(None, max_length=50)

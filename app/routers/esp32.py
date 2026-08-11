@@ -18,8 +18,9 @@ router = APIRouter(tags=["esp32"])
 _debug_overrides: Dict[int, dict] = {}
 
 DEFAULT_DEBUG_OVERRIDE = {
-    "smsalert": False,
-    "smsalertmsg": "none",
+    "smsalert": None,  # None = use real logic
+    "smsalertmsg": None,  # None = use real logic
+    "smsalertno": None,  # None = use real logic
     "medicinedispense": 0,
     "move": False,
     "led": "",        # empty = use real
@@ -213,6 +214,31 @@ async def api_esp32_alerts(
         user.age, hr, spo2_val, temp_val, sys_bp, dia_bp, sensor_error=sensor_error
     )
 
+    # Calculate real-time SMS alert behavior based on user profile setting and thresholds
+    user_sms_enabled = user.enable_sms_alerts if user.enable_sms_alerts is not None else True
+    computed_smsalert = False
+    computed_smsalertmsg = "none"
+    computed_smsalertno = user.last_sms_alert_no or 0
+
+    if user_sms_enabled and is_alert and alert_reasons:
+        severity = "CRITICAL" if led in ("red", "error") else "WARNING"
+        reasons_str = ", ".join(alert_reasons)
+        computed_smsalertmsg = f"{severity}: {reasons_str}"
+
+        # Deduplication and 3-minute (180s) cooldown check
+        is_new_vital = (target_rec is not None and target_rec.id != user.last_sms_alert_vital_id) or (user.last_sms_alert_vital_id is None)
+        cooldown_passed = (user.last_sms_alert_time is None) or ((datetime.utcnow() - user.last_sms_alert_time).total_seconds() >= 180)
+
+        if is_new_vital or cooldown_passed:
+            user.last_sms_alert_no = (user.last_sms_alert_no or 0) + 1
+            user.last_sms_alert_time = datetime.utcnow()
+            user.last_sms_alert_vital_id = target_rec.id if target_rec else None
+            db.commit()
+            db.refresh(user)
+
+        computed_smsalert = True
+        computed_smsalertno = user.last_sms_alert_no or 0
+
     # Compute active medicine slot due (1 to 7) in GMT+8 (newest due slot first)
     now_gmt8 = datetime.utcnow() + timedelta(hours=8)
     auto_meddispense = 0
@@ -233,10 +259,11 @@ async def api_esp32_alerts(
     if due_med:
         auto_meddispense = due_med.slot_number
 
-
     overrides = _debug_overrides.get(patient_id, {})
-    final_smsalert = overrides.get("smsalert", False)
-    final_smsalertmsg = overrides.get("smsalertmsg", "none")
+    final_smsalert = overrides["smsalert"] if (overrides.get("smsalert") is not None) else computed_smsalert
+    final_smsalertmsg = overrides["smsalertmsg"] if (overrides.get("smsalertmsg") is not None) else computed_smsalertmsg
+    final_smsalertno = overrides["smsalertno"] if (overrides.get("smsalertno") is not None) else computed_smsalertno
+
     override_med = overrides.get("medicinedispense")
     final_meddispense = override_med if (override_med is not None and override_med > 0) else auto_meddispense
 
@@ -249,7 +276,6 @@ async def api_esp32_alerts(
 
     final_move = overrides.get("move", False)
 
-
     return JSONResponse({
         "led": led,
         "lcd1": lcd1,
@@ -259,6 +285,7 @@ async def api_esp32_alerts(
         "alert": is_alert,
         "smsalert": final_smsalert,
         "smsalertmsg": final_smsalertmsg,
+        "smsalertno": final_smsalertno,
         "medicinedispense": final_meddispense,
         "move": final_move,
         "timestamp": now_gmt8.isoformat(),

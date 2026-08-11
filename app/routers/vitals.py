@@ -234,6 +234,7 @@ def api_get_profile(request: Request, db: Session = Depends(get_db)):
         "medical_conditions": user.medical_conditions,
         "emergency_contact_name": user.emergency_contact_name,
         "emergency_contact_phone": user.emergency_contact_phone,
+        "enable_sms_alerts": user.enable_sms_alerts,
     })
 
 
