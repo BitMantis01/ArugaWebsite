@@ -56,9 +56,9 @@ def migrate_db():
     except Exception as e:
         logger.warning(f"Database table initialization warning: {e}")
 
-    if DATABASE_URL.startswith("sqlite"):
-        with engine.connect() as conn:
-            from sqlalchemy import text
+    with engine.connect() as conn:
+        from sqlalchemy import text
+        if DATABASE_URL.startswith("sqlite"):
             try:
                 columns = [row[1] for row in conn.execute(text("PRAGMA table_info(medicines)")).fetchall()]
                 if "slot_number" not in columns:
@@ -80,6 +80,20 @@ def migrate_db():
                 conn.commit()
             except Exception as e:
                 logger.warning(f"SQLite migration step warning: {e}")
+        else:
+            # PostgreSQL / Production database migration
+            try:
+                conn.execute(text("ALTER TABLE medicines ADD COLUMN IF NOT EXISTS slot_number INTEGER DEFAULT 1"))
+                conn.execute(text("ALTER TABLE medicines ADD COLUMN IF NOT EXISTS scheduled_datetime TIMESTAMP"))
+                conn.execute(text("ALTER TABLE medicines ADD COLUMN IF NOT EXISTS is_dispensed BOOLEAN DEFAULT FALSE"))
+
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS enable_sms_alerts BOOLEAN DEFAULT TRUE"))
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_sms_alert_no INTEGER DEFAULT 0"))
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_sms_alert_time TIMESTAMP"))
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_sms_alert_vital_id INTEGER"))
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"PostgreSQL migration step warning: {e}")
 
 
 def init_db():
