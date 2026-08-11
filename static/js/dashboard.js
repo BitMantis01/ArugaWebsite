@@ -489,6 +489,7 @@ function renderFeed() {
             }
         }
     }
+    applyFeedRotation();
 }
 
 // Tick timer every second
@@ -503,6 +504,48 @@ setInterval(() => {
     }
 }, 1000);
 
+function setFeedRotation(deg) {
+    localStorage.setItem('aruga_feed_rotation', deg);
+    document.querySelectorAll('.feed-orient-btn').forEach(btn => {
+        btn.classList.remove('active', 'btn-pink');
+        btn.classList.add('btn-outline');
+    });
+    const activeBtn = document.getElementById(`orient-${deg}-btn`);
+    if (activeBtn) {
+        activeBtn.classList.remove('btn-outline');
+        activeBtn.classList.add('active', 'btn-pink');
+    }
+    applyFeedRotation();
+}
+
+function applyFeedRotation() {
+    const savedDeg = localStorage.getItem('aruga_feed_rotation');
+    const deg = savedDeg !== null ? parseInt(savedDeg) : 90;
+    const rotationClasses = ['rotate-0', 'rotate-90', 'rotate-180', 'rotate-270'];
+    const newClass = `rotate-${deg}`;
+
+    const mainImg = document.getElementById('feed-main-img');
+    if (mainImg) {
+        rotationClasses.forEach(c => mainImg.classList.remove(c));
+        mainImg.classList.add(newClass);
+    }
+
+    document.querySelectorAll('.feed-card img, .filmstrip-item img, .mini-snapshot').forEach(img => {
+        rotationClasses.forEach(c => img.classList.remove(c));
+        img.classList.add(newClass);
+    });
+
+    document.querySelectorAll('.feed-orient-btn').forEach(btn => {
+        btn.classList.remove('active', 'btn-pink');
+        btn.classList.add('btn-outline');
+    });
+    const activeBtn = document.getElementById(`orient-${deg}-btn`);
+    if (activeBtn) {
+        activeBtn.classList.remove('btn-outline');
+        activeBtn.classList.add('active', 'btn-pink');
+    }
+}
+
 // Click a filmstrip thumbnail to preview
 function showFilmstripImage(src) {
     const mainContainer = document.getElementById('feed-main-container');
@@ -514,6 +557,7 @@ function showFilmstripImage(src) {
         } else {
             mainContainer.innerHTML = `<img src="${src}" alt="Live Feed" class="main-snapshot" id="feed-main-img">`;
         }
+        applyFeedRotation();
     }
 }
 
@@ -739,8 +783,7 @@ setInterval(async () => {
 
 // ─── Initialize charts on page load if on relevant tabs ─────
 document.addEventListener('DOMContentLoaded', () => {
-    // Summary is default, no chart needed immediately
-    // Charts init on tab switch
+    applyFeedRotation();
 });
 
 // ─── Profile: Edit Age ─────────────────────────────────────
@@ -815,6 +858,7 @@ async function toggleProfileSmsAlerts(enabled) {
 
 window.saveSmsAlertSetting = saveSmsAlertSetting;
 window.toggleProfileSmsAlerts = toggleProfileSmsAlerts;
+window.setFeedRotation = setFeedRotation;
 
 // ─── Debug Tab ──────────────────────────────────────────────
 async function refreshDebugPreview() {

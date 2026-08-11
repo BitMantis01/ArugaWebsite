@@ -133,11 +133,20 @@
 
             <!-- Main snapshot -->
             <div class="card" style="margin-bottom:1.5rem;">
-                <div class="card-header"><h3>Current Snapshot</h3></div>
-                <div id="feed-main-container">
+                <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+                    <h3><i class="fa-solid fa-camera"></i> Current Snapshot</h3>
+                    <div class="feed-orientation-controls" style="display:flex;align-items:center;gap:0.4rem;">
+                        <span style="font-size:0.85rem;color:var(--gray-600);font-weight:600;margin-right:4px;">Rotate Feed:</span>
+                        <button type="button" class="btn btn-outline btn-sm feed-orient-btn" onclick="setFeedRotation(0)" id="orient-0-btn" title="Original (0°)">0°</button>
+                        <button type="button" class="btn btn-pink btn-sm feed-orient-btn active" onclick="setFeedRotation(90)" id="orient-90-btn" title="Rotate 90° Clockwise">90°</button>
+                        <button type="button" class="btn btn-outline btn-sm feed-orient-btn" onclick="setFeedRotation(180)" id="orient-180-btn" title="Rotate 180° Inverted">180°</button>
+                        <button type="button" class="btn btn-outline btn-sm feed-orient-btn" onclick="setFeedRotation(270)" id="orient-270-btn" title="Rotate 270° Counter-Clockwise">270°</button>
+                    </div>
+                </div>
+                <div id="feed-main-container" class="feed-img-container">
                     {% set latest_feed = live_feed[0] if live_feed else None %}
                     {% if latest_feed and latest_feed.url %}
-                    <img src="{{ latest_feed.url }}" alt="Live Feed" class="main-snapshot" id="feed-main-img">
+                    <img src="{{ latest_feed.url }}" alt="Live Feed" class="main-snapshot rotate-90" id="feed-main-img">
                     {% else %}
                     <div class="snapshot-placeholder-large" id="feed-main-placeholder">WAITING FOR FEED...</div>
                     {% endif %}
