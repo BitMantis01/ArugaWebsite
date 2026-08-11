@@ -77,6 +77,7 @@ def migrate_db():
                     conn.execute(text("ALTER TABLE users ADD COLUMN last_sms_alert_time DATETIME"))
                 if "last_sms_alert_vital_id" not in user_columns:
                     conn.execute(text("ALTER TABLE users ADD COLUMN last_sms_alert_vital_id INTEGER"))
+                conn.execute(text("UPDATE users SET enable_sms_alerts = 1 WHERE enable_sms_alerts IS NULL"))
                 conn.commit()
             except Exception as e:
                 logger.warning(f"SQLite migration step warning: {e}")
@@ -91,6 +92,7 @@ def migrate_db():
                 conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_sms_alert_no INTEGER DEFAULT 0"))
                 conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_sms_alert_time TIMESTAMP"))
                 conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_sms_alert_vital_id INTEGER"))
+                conn.execute(text("UPDATE users SET enable_sms_alerts = TRUE WHERE enable_sms_alerts IS NULL"))
                 conn.commit()
             except Exception as e:
                 logger.warning(f"PostgreSQL migration step warning: {e}")

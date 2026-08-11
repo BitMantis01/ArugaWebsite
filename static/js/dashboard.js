@@ -775,24 +775,36 @@ async function saveAge() {
 
 async function toggleProfileSmsAlerts(enabled) {
     const badge = document.getElementById('sms-alerts-status-badge');
+    const toast = document.getElementById('sms-alerts-saved-toast');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     try {
         const resp = await fetch('/api/profile', {
             method: 'PATCH',
             headers: getCsrfHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ enable_sms_alerts: enabled })
+            body: JSON.stringify({
+                enable_sms_alerts: enabled,
+                csrf_token: csrfToken
+            })
         });
         if (resp.ok) {
             if (badge) {
                 badge.textContent = enabled ? 'Active' : 'Disabled';
                 badge.style.background = enabled ? 'var(--pink-600)' : 'var(--gray-400)';
             }
+            if (toast) {
+                toast.style.display = 'inline-block';
+                setTimeout(() => { toast.style.display = 'none'; }, 2500);
+            }
         } else {
-            alert('Failed to update SMS alert setting');
-            document.getElementById('profile-sms-alerts-toggle').checked = !enabled;
+            const errData = await resp.json().catch(() => ({}));
+            alert('Failed to update SMS alert setting: ' + (errData.detail || resp.statusText || 'Server error'));
+            const toggleEl = document.getElementById('profile-sms-alerts-toggle');
+            if (toggleEl) toggleEl.checked = !enabled;
         }
     } catch (err) {
         alert('Error updating SMS alert setting: ' + err.message);
-        document.getElementById('profile-sms-alerts-toggle').checked = !enabled;
+        const toggleEl = document.getElementById('profile-sms-alerts-toggle');
+        if (toggleEl) toggleEl.checked = !enabled;
     }
 }
 

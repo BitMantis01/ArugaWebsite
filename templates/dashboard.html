@@ -331,12 +331,13 @@
                         <div class="pf-label">Emergency SMS Alerts</div>
                         <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.25rem;">
                             <label style="display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:600;color:var(--gray-800);">
-                                <input type="checkbox" id="profile-sms-alerts-toggle" {% if user.enable_sms_alerts %}checked{% endif %} onchange="toggleProfileSmsAlerts(this.checked)" style="width:20px;height:20px;accent-color:var(--pink-600);">
+                                <input type="checkbox" id="profile-sms-alerts-toggle" {% if user.enable_sms_alerts or user.enable_sms_alerts is none %}checked{% endif %} onchange="toggleProfileSmsAlerts(this.checked)" style="width:20px;height:20px;accent-color:var(--pink-600);">
                                 <span>Enable Emergency GSM SMS Alerts</span>
                             </label>
-                            <span id="sms-alerts-status-badge" class="badge" style="background: {{ 'var(--pink-600)' if user.enable_sms_alerts else 'var(--gray-400)' }}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem;">
-                                {{ 'Active' if user.enable_sms_alerts else 'Disabled' }}
+                            <span id="sms-alerts-status-badge" class="badge" style="background: {{ 'var(--gray-400)' if user.enable_sms_alerts is false else 'var(--pink-600)' }}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem;">
+                                {{ 'Disabled' if user.enable_sms_alerts is false else 'Active' }}
                             </span>
+                            <span id="sms-alerts-saved-toast" style="display:none;color:#10b981;font-weight:600;font-size:0.85rem;margin-left:4px;"><i class="fa-solid fa-check"></i> Saved!</span>
                         </div>
                     </div>
                 </div>
