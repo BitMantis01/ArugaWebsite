@@ -220,10 +220,13 @@ async def api_esp32_alerts(
     computed_smsalertmsg = "none"
     computed_smsalertno = user.last_sms_alert_no or 0
 
-    if user_sms_enabled and is_alert and alert_reasons:
-        severity = "CRITICAL" if led in ("red", "error") else "WARNING"
+    if user_sms_enabled and is_alert and alert_reasons and not sensor_error:
+        patient_name = user.full_name.strip() if user.full_name else f"Patient #{patient_id}"
         reasons_str = ", ".join(alert_reasons)
-        computed_smsalertmsg = f"{severity}: {reasons_str}"
+        if led in ("red", "error"):
+            computed_smsalertmsg = f"ARUGA EMERGENCY for {patient_name}: {reasons_str}. Immediate attention required!"
+        else:
+            computed_smsalertmsg = f"ARUGA ALERT for {patient_name}: {reasons_str}. Please check patient."
 
         # Deduplication and 3-minute (180s) cooldown check
         is_new_vital = (target_rec is not None and target_rec.id != user.last_sms_alert_vital_id) or (user.last_sms_alert_vital_id is None)
