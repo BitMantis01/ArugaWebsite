@@ -270,7 +270,7 @@ async function initPredictionCharts() {
             if (!histList || histList.length === 0 || !predList || predList.length === 0) {
                 return { histPoints: [], predPoints: [], labels: [] };
             }
-            const histSlice = histList.slice(-20);
+            const histSlice = histList.slice(-5);
             const histPoints = histSlice.map(r => ({ x: gmt8Time(r.recorded_at), y: r.val }));
             const fTimes = (futureTimes || []).map(t => gmt8Time(t));
             const lastPoint = histPoints[histPoints.length - 1];

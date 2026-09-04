@@ -10,7 +10,7 @@ import time
 from app.config import API_KEY
 
 
-API_URL = "http://localhost:8000/api/server/vitals-hr/1"
+API_URL = "https://aruga.bitmantis.xyz/api/server/vitals-hr/5"
 
 
 SPO2_MEAN = 97
@@ -19,7 +19,8 @@ TEMP_MEAN = 36.6
 SYS_MEAN = 118
 DIA_MEAN = 78
 
-print("Populating vitals for patient 1 (Ctrl+C to stop)...")
+patient_id = API_URL.rstrip("/").split("/")[-1]
+print(f"Populating vitals for patient {patient_id} (Ctrl+C to stop)...")
 count = 0
 
 while True:
@@ -45,6 +46,7 @@ while True:
     req = urllib.request.Request(API_URL, data=payload, method="POST")
     req.add_header("Content-Type", "application/json")
     req.add_header("x-api-key", API_KEY)
+    req.add_header("User-Agent", "ARUGA-Hardware-Client/1.0 (ESP32-Simulator)")
 
     try:
         with urllib.request.urlopen(req, timeout=5) as resp:
@@ -57,4 +59,4 @@ while True:
         count += 1
         print(f"[{count:04d}] ERR | {e}")
 
-    time.sleep(5)
+    time.sleep(1)
