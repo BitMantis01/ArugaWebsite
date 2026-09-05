@@ -282,6 +282,94 @@ a { color: var(--pink-600); text-decoration: none; }
     50% { opacity: 0.35; }
 }
 
+/* ---------- Summary Previous Readings & BP Pattern ---------- */
+.readings-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.readings-card-title {
+    color: var(--pink-700);
+    font-weight: 700;
+    font-size: 1.15rem;
+    margin: 0;
+}
+.readings-card-subtitle {
+    color: var(--gray-400);
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+.readings-table-container {
+    overflow-x: auto;
+    width: 100%;
+}
+.readings-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    white-space: nowrap;
+}
+.readings-table th {
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gray-600);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--pink-100);
+    background: rgba(255, 245, 246, 0.5);
+}
+.readings-table td {
+    padding: 0.85rem 1rem;
+    font-size: 0.9rem;
+    color: var(--gray-700);
+    font-weight: 500;
+    border-bottom: 1px solid rgba(244, 164, 181, 0.15);
+    transition: background var(--transition);
+}
+.readings-table tbody tr:hover td {
+    background: rgba(255, 245, 246, 0.4);
+}
+.readings-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.bp-pattern-label {
+    color: var(--pink-700);
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+.bp-pattern-headline {
+    color: var(--pink-700);
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0.2rem 0 0.5rem 0;
+    letter-spacing: -0.5px;
+}
+.bp-pattern-details {
+    font-size: 0.95rem;
+    color: var(--gray-700);
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.4rem;
+}
+.bp-pattern-details strong {
+    color: var(--gray-800);
+}
+.bp-pattern-details .trend-val {
+    color: var(--pink-700);
+    font-weight: 600;
+}
+.bp-pattern-footnote {
+    font-size: 0.82rem;
+    color: var(--gray-400);
+}
+
 /* ---------- Medicine List ---------- */
 .medicine-list { display: flex; flex-direction: column; gap: 0.75rem; }
 .medicine-item {

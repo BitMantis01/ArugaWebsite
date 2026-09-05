@@ -197,3 +197,84 @@ def check_vitals_alert(
 
     is_alert = highest in ("yellow", "red")
     return (highest, is_alert, reasons)
+
+
+def compute_single_vital_trend(values: List[float]) -> str:
+    """
+    Evaluate pattern of consecutive vital readings in chronological order.
+    Returns 'Stable Trend', 'Rising Trend', 'Falling Trend', or 'Fluctuating Trend'.
+    """
+    if not values or len(values) < 3:
+        return "Insufficient Data"
+
+    val_range = max(values) - min(values)
+    if val_range <= 4.0:
+        return "Stable Trend"
+
+    diffs = [values[i] - values[i - 1] for i in range(1, len(values))]
+    increases = sum(1 for d in diffs if d > 1.0)
+    decreases = sum(1 for d in diffs if d < -1.0)
+
+    if increases >= 3 and decreases == 0:
+        return "Rising Trend"
+    if decreases >= 3 and increases == 0:
+        return "Falling Trend"
+
+    net_change = values[-1] - values[0]
+    if net_change >= 10.0 and increases >= len(diffs) - 1:
+        return "Rising Trend"
+    if net_change <= -10.0 and decreases >= len(diffs) - 1:
+        return "Falling Trend"
+
+    return "Fluctuating Trend"
+
+
+def analyze_blood_pressure_pattern(bp_records: list) -> dict:
+    """
+    Analyze the latest complete blood pressure records.
+    `bp_records` are passed in newest-first or chronological order.
+    Returns a dict with overall, sbp, dbp trends and count.
+    """
+    valid = [
+        r for r in bp_records
+        if getattr(r, "systolic_bp", None) is not None and getattr(r, "diastolic_bp", None) is not None
+    ]
+
+    latest_5 = valid[:5]
+    if len(latest_5) < 3:
+        return {
+            "overall": "Insufficient Data",
+            "sbp": "Insufficient Data",
+            "dbp": "Insufficient Data",
+            "count": len(latest_5)
+        }
+
+    chrono = list(reversed(latest_5))
+    sbp_vals = [float(r.systolic_bp) for r in chrono]
+    dbp_vals = [float(r.diastolic_bp) for r in chrono]
+
+    sbp_trend = compute_single_vital_trend(sbp_vals)
+    dbp_trend = compute_single_vital_trend(dbp_vals)
+
+    if sbp_trend == dbp_trend:
+        overall = sbp_trend
+    elif sbp_trend == "Rising Trend" and dbp_trend == "Stable Trend":
+        overall = "Rising Trend"
+    elif dbp_trend == "Rising Trend" and sbp_trend == "Stable Trend":
+        overall = "Rising Trend"
+    elif sbp_trend == "Falling Trend" and dbp_trend == "Stable Trend":
+        overall = "Falling Trend"
+    elif dbp_trend == "Falling Trend" and sbp_trend == "Stable Trend":
+        overall = "Falling Trend"
+    elif sbp_trend == "Stable Trend" and dbp_trend == "Stable Trend":
+        overall = "Stable Trend"
+    else:
+        overall = "Fluctuating Trend"
+
+    return {
+        "overall": overall,
+        "sbp": sbp_trend,
+        "dbp": dbp_trend,
+        "count": len(latest_5)
+    }
+

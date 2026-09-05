@@ -701,6 +701,116 @@ function updateVitalCard(valId, statusId, value, statusObj) {
     }
 }
 
+// ─── Summary Tab: Previous 5 Readings & BP Pattern ──────────
+let lastSummaryVitalId = null;
+
+function formatReadingsDateTime(isoStr) {
+    if (!isoStr) return '--';
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return '--';
+    const gmt8Date = new Date(d.getTime() + 8 * 3600 * 1000);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[gmt8Date.getUTCMonth()];
+    const day = String(gmt8Date.getUTCDate()).padStart(2, '0');
+    const year = gmt8Date.getUTCFullYear();
+    const hours = String(gmt8Date.getUTCHours()).padStart(2, '0');
+    const minutes = String(gmt8Date.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(gmt8Date.getUTCSeconds()).padStart(2, '0');
+    return `${month} ${day}, ${year} ${hours}:${minutes}:${seconds}`;
+}
+
+function computeSingleVitalTrend(values) {
+    if (!values || values.length < 3) return 'Insufficient Data';
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+    if ((maxVal - minVal) <= 4) return 'Stable Trend';
+
+    const diffs = [];
+    for (let i = 1; i < values.length; i++) {
+        diffs.push(values[i] - values[i - 1]);
+    }
+    const increases = diffs.filter(d => d > 1).length;
+    const decreases = diffs.filter(d => d < -1).length;
+
+    if (increases >= 3 && decreases === 0) return 'Rising Trend';
+    if (decreases >= 3 && increases === 0) return 'Falling Trend';
+
+    const netChange = values[values.length - 1] - values[0];
+    if (netChange >= 10 && increases >= (diffs.length - 1)) return 'Rising Trend';
+    if (netChange <= -10 && decreases >= (diffs.length - 1)) return 'Falling Trend';
+
+    return 'Fluctuating Trend';
+}
+
+function updateSummaryPreviousAndPattern(history) {
+    if (!Array.isArray(history) || history.length === 0) return;
+
+    // history is in chronological order (oldest to newest)
+    // The previous readings before the latest reading are history.slice(0, -1)
+    const prevPool = history.slice(0, -1);
+    const prev5 = prevPool.slice(-5).reverse();
+
+    const tbody = document.getElementById('summary-prev-readings-body');
+    if (tbody && prev5.length > 0) {
+        tbody.innerHTML = prev5.map(r => {
+            const timeStr = formatReadingsDateTime(r.recorded_at);
+            const spo2Str = r.spo2 != null ? Number(r.spo2).toFixed(1) : '--';
+            const hrStr = r.heart_rate != null ? r.heart_rate : '--';
+            const tempStr = r.temperature != null ? Number(r.temperature).toFixed(1) : '--';
+            const bpStr = (r.systolic_bp != null && r.diastolic_bp != null) ? `${r.systolic_bp}/${r.diastolic_bp}` : '--/--';
+            return `
+                <tr>
+                    <td>${escapeHtml(timeStr)}</td>
+                    <td>${escapeHtml(spo2Str)}</td>
+                    <td>${escapeHtml(hrStr)}</td>
+                    <td>${escapeHtml(tempStr)}</td>
+                    <td>${escapeHtml(bpStr)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // BP Pattern: latest 5 complete blood pressure readings in history
+    const validBp = history.filter(r => !r.sensor_error && r.systolic_bp != null && r.diastolic_bp != null);
+    const latest5Bp = validBp.slice(-5);
+
+    if (latest5Bp.length >= 3) {
+        const sbpVals = latest5Bp.map(r => Number(r.systolic_bp));
+        const dbpVals = latest5Bp.map(r => Number(r.diastolic_bp));
+
+        const sbpTrend = computeSingleVitalTrend(sbpVals);
+        const dbpTrend = computeSingleVitalTrend(dbpVals);
+
+        let overall = 'Fluctuating Trend';
+        if (sbpTrend === dbpTrend) {
+            overall = sbpTrend;
+        } else if (sbpTrend === 'Rising Trend' && dbpTrend === 'Stable Trend') {
+            overall = 'Rising Trend';
+        } else if (dbpTrend === 'Rising Trend' && sbpTrend === 'Stable Trend') {
+            overall = 'Rising Trend';
+        } else if (sbpTrend === 'Falling Trend' && dbpTrend === 'Stable Trend') {
+            overall = 'Falling Trend';
+        } else if (dbpTrend === 'Falling Trend' && sbpTrend === 'Stable Trend') {
+            overall = 'Falling Trend';
+        } else if (sbpTrend === 'Stable Trend' && dbpTrend === 'Stable Trend') {
+            overall = 'Stable Trend';
+        }
+
+        const headlineEl = document.getElementById('bp-pattern-headline');
+        const sbpEl = document.getElementById('bp-sbp-trend');
+        const dbpEl = document.getElementById('bp-dbp-trend');
+
+        if (headlineEl) headlineEl.textContent = overall;
+        if (sbpEl) sbpEl.textContent = sbpTrend;
+        if (dbpEl) dbpEl.textContent = dbpTrend;
+    }
+}
+
+// Initial hydration from window.__VITALS_HISTORY if available
+if (Array.isArray(window.__VITALS_HISTORY) && window.__VITALS_HISTORY.length > 0) {
+    updateSummaryPreviousAndPattern(window.__VITALS_HISTORY);
+}
+
 // Poll every 5 seconds for fresh data
 setInterval(async () => {
     try {
@@ -731,6 +841,19 @@ setInterval(async () => {
         if (data.seconds_ago !== undefined) {
             const secEl = document.getElementById('summary-sec-ago');
             if (secEl) secEl.textContent = data.seconds_ago;
+        }
+
+        // When a new vital reading arrives, refresh summary previous readings & BP pattern
+        if (data.id && data.id !== lastSummaryVitalId) {
+            lastSummaryVitalId = data.id;
+            fetch('/api/vitals/history?limit=10')
+                .then(r => r.json())
+                .then(hist => {
+                    if (Array.isArray(hist)) {
+                        updateSummaryPreviousAndPattern(hist);
+                    }
+                })
+                .catch(() => {});
         }
 
         // Refresh vitals charts if that tab is visible

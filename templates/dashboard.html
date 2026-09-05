@@ -98,6 +98,59 @@
                 Last updated: <span id="summary-sec-ago">{% if v %}{{ ((now() - v.recorded_at).total_seconds()|int) if v else '--' }}{% else %}--{% endif %}</span> sec ago
             </div>
 
+            <!-- Previous 5 Readings -->
+            <div class="card" style="margin-top:1.5rem;">
+                <div class="readings-card-header">
+                    <h3 class="readings-card-title">Previous 5 Readings</h3>
+                    <span class="readings-card-subtitle">Before the latest reading</span>
+                </div>
+                <div class="readings-table-container">
+                    <table class="readings-table">
+                        <thead>
+                            <tr>
+                                <th>REAL-TIME</th>
+                                <th>SPO2 (%)</th>
+                                <th>HEART RATE (BPM)</th>
+                                <th>TEMPERATURE (°C)</th>
+                                <th>BLOOD PRESSURE (MMHG)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summary-prev-readings-body">
+                            {% if previous_readings %}
+                                {% for r in previous_readings %}
+                                <tr>
+                                    <td>{{ r.real_time }}</td>
+                                    <td>{{ r.spo2 }}</td>
+                                    <td>{{ r.heart_rate }}</td>
+                                    <td>{{ r.temperature }}</td>
+                                    <td>{{ r.blood_pressure }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" style="padding:1.5rem;text-align:center;color:var(--gray-400);font-size:0.9rem;">
+                                        No previous readings recorded yet.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Blood Pressure Pattern -->
+            <div class="card" style="margin-top:1.5rem;">
+                <div class="bp-pattern-label">Blood Pressure Pattern</div>
+                <div class="bp-pattern-headline" id="bp-pattern-headline">
+                    {{ bp_pattern.overall if bp_pattern else 'Insufficient Data' }}
+                </div>
+                <div class="bp-pattern-details">
+                    <span><strong>SBP:</strong> <span class="trend-val" id="bp-sbp-trend">{{ bp_pattern.sbp if bp_pattern else '--' }}</span></span>
+                    <span><strong>DBP:</strong> <span class="trend-val" id="bp-dbp-trend">{{ bp_pattern.dbp if bp_pattern else '--' }}</span></span>
+                </div>
+                <div class="bp-pattern-footnote">Pattern based on the latest five complete blood-pressure readings.</div>
+            </div>
+
             <!-- Scheduled Medicines -->
             <div class="card" style="margin-top:1.5rem;">
                 <div class="card-header">
