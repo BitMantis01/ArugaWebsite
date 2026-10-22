@@ -111,6 +111,11 @@ app.include_router(live_feed.router)
 setup_metrics(app)
 
 
+@app.get("/health", status_code=200, tags=["health"])
+async def health_check():
+    return {"status": "ok"}
+
+
 @app.on_event("startup")
 def on_startup():
     init_db()
