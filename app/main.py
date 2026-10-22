@@ -93,9 +93,9 @@ app.add_middleware(
 app.middleware("http")(security_and_logging_middleware)
 
 # Routine Health Check Endpoint (suppressed from Loki logs and metrics histograms)
-@app.get("/health", tags=["monitoring"])
+@app.get("/health", status_code=200, tags=["health", "monitoring"])
 def health_check():
-    return {"status": "healthy"}
+    return {"status": "ok"}
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -109,11 +109,6 @@ app.include_router(live_feed.router)
 
 # Instrument FastAPI app with Prometheus / VictoriaMetrics metrics at /metrics
 setup_metrics(app)
-
-
-@app.get("/health", status_code=200, tags=["health"])
-async def health_check():
-    return {"status": "ok"}
 
 
 @app.on_event("startup")

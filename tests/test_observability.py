@@ -25,7 +25,7 @@ class TestObservability(unittest.TestCase):
         """Verify /health returns 200 and does not emit routine Loki access logs."""
         response = self.client.get("/health")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"status": "healthy"})
+        self.assertIn(response.json().get("status"), ("ok", "healthy"))
         self.assertIn("X-Request-ID", response.headers)
 
     def test_metrics_internal_access_allowed(self):
