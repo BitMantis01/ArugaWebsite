@@ -23,6 +23,7 @@ from app.config import (
     MAX_LIVE_FEED_IMAGES_PER_USER,
 )
 from app.models import LiveFeedImage
+from app.observability import track_external
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ def is_r2_configured() -> bool:
 
 
 def get_r2_client():
-    """Build S3 client for Cloudflare R2 using boto3."""
+    """Build and return an S3 client targeting Cloudflare R2 endpoint."""
     if not is_r2_configured():
         return None
     endpoint_url = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
@@ -43,7 +44,7 @@ def get_r2_client():
         aws_access_key_id=R2_ACCESS_KEY_ID,
         aws_secret_access_key=R2_SECRET_ACCESS_KEY,
         region_name="auto",
-        config=Config(signature_version="s3v4"),
+        config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
     )
 
 
@@ -57,13 +58,14 @@ def upload_live_feed_image(user_id: int, filename: str, image_bytes: bytes) -> s
     if is_r2_configured():
         try:
             s3 = get_r2_client()
-            s3.put_object(
-                Bucket=R2_BUCKET_NAME,
-                Key=object_key,
-                Body=image_bytes,
-                ContentType="image/jpeg",
-                CacheControl="private, max-age=3600" if not R2_PUBLIC_URL else "public, max-age=31536000",
-            )
+            with track_external("cloudflare_r2"):
+                s3.put_object(
+                    Bucket=R2_BUCKET_NAME,
+                    Key=object_key,
+                    Body=image_bytes,
+                    ContentType="image/jpeg",
+                    CacheControl="private, max-age=3600" if not R2_PUBLIC_URL else "public, max-age=31536000",
+                )
             # Store object key in database (or public URL if R2_PUBLIC_URL is configured)
             if R2_PUBLIC_URL:
                 return f"{R2_PUBLIC_URL.rstrip('/')}/{object_key}"
@@ -108,11 +110,12 @@ def get_presigned_or_public_url(image_record: LiveFeedImage, expires_in: int = 3
                 object_key = path_str
 
             s3 = get_r2_client()
-            presigned_url = s3.generate_presigned_url(
-                "get_object",
-                Params={"Bucket": R2_BUCKET_NAME, "Key": object_key},
-                ExpiresIn=expires_in,
-            )
+            with track_external("cloudflare_r2"):
+                presigned_url = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": R2_BUCKET_NAME, "Key": object_key},
+                    ExpiresIn=expires_in,
+                )
             return presigned_url
         except Exception as e:
             logger.error(f"Failed to generate presigned URL ({path_str}): {e}")
@@ -140,7 +143,8 @@ def delete_live_feed_image(image_record: LiveFeedImage) -> None:
                 object_key = path_str
 
             s3 = get_r2_client()
-            s3.delete_object(Bucket=R2_BUCKET_NAME, Key=object_key)
+            with track_external("cloudflare_r2"):
+                s3.delete_object(Bucket=R2_BUCKET_NAME, Key=object_key)
             return
         except Exception as e:
             logger.error(f"Failed to delete R2 object ({path_str}): {e}")

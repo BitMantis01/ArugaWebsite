@@ -29,3 +29,8 @@ numpy==1.26.4
 pandas==2.2.2
 scikit-learn==1.5.1
 statsmodels==0.14.2
+
+# Observability & Monitoring
+python-json-logger==4.2.0
+prometheus-fastapi-instrumentator==8.1.0
+prometheus-client==0.26.0

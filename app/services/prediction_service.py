@@ -1,5 +1,6 @@
-from app.prediction_model import predict_vitals
 from typing import Dict, List, Any
+from app.prediction_model import predict_vitals
+from app.observability import track_external
 
 
 def get_vitals_predictions(
@@ -8,11 +9,12 @@ def get_vitals_predictions(
     temp_history: List[float],
     sys_bp_history: List[float] = None,
     dia_bp_history: List[float] = None,
-    steps: int = 20
+    steps: int = 20,
 ) -> Dict[str, Any]:
     """
     Service wrapper for ARIMA / polynomial vitals forecasting.
     Sanitizes null values and returns predictions alongside confidence intervals.
+    Isolates statistical forecasting computation duration via track_external.
     """
     clean_spo2 = [float(v) for v in (spo2_history or []) if v is not None]
     clean_hr = [float(v) for v in (hr_history or []) if v is not None]
@@ -20,4 +22,7 @@ def get_vitals_predictions(
     clean_sys_bp = [float(v) for v in (sys_bp_history or []) if v is not None]
     clean_dia_bp = [float(v) for v in (dia_bp_history or []) if v is not None]
 
-    return predict_vitals(clean_spo2, clean_hr, clean_temp, clean_sys_bp, clean_dia_bp, steps=steps)
+    with track_external("arima_model_prediction"):
+        return predict_vitals(
+            clean_spo2, clean_hr, clean_temp, clean_sys_bp, clean_dia_bp, steps=steps
+        )

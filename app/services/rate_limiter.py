@@ -3,6 +3,8 @@ from collections import defaultdict
 from typing import Dict, List
 from fastapi import HTTPException, Request
 
+from app.observability import record_security_event
+
 
 class RateLimiter:
     """In-memory sliding window rate limiter for IP address throttling."""
@@ -25,10 +27,11 @@ class RateLimiter:
         self.history[key] = [t for t in self.history[key] if t > cutoff]
 
         if len(self.history[key]) >= self.max_requests:
+            record_security_event("rate_limited")
             raise HTTPException(
                 status_code=429,
                 detail=f"Too many requests. Please try again in {self.window_seconds} seconds.",
-                headers={"Retry-After": str(self.window_seconds)}
+                headers={"Retry-After": str(self.window_seconds)},
             )
 
         self.history[key].append(now)

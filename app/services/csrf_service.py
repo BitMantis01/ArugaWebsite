@@ -2,6 +2,8 @@ import secrets
 import hmac
 from fastapi import Request, HTTPException, Depends
 
+from app.observability import record_security_event
+
 
 def generate_csrf_token() -> str:
     return secrets.token_hex(32)
@@ -32,6 +34,7 @@ async def verify_csrf_token(request: Request):
 
     session_token = request.session.get("csrf_token")
     if not session_token:
+        record_security_event("turnstile_failed")
         raise HTTPException(status_code=403, detail="CSRF token missing from session")
 
     client_token = request.headers.get("x-csrf-token")
@@ -52,4 +55,5 @@ async def verify_csrf_token(request: Request):
                 pass
 
     if not client_token or not hmac.compare_digest(str(client_token), session_token):
+        record_security_event("turnstile_failed")
         raise HTTPException(status_code=403, detail="Invalid or missing CSRF token")

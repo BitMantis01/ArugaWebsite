@@ -4,6 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
+# Configure centralized stdout structured JSON logging before other application modules import
+from app.observability import (
+    setup_logging,
+    setup_metrics,
+    security_and_logging_middleware,
+    global_exception_handler,
+    cleanup_worker_metrics,
+)
+
+logger = setup_logging()
+
 from app.config import SECRET_KEY, UPLOAD_DIR, ENABLE_API_DOCS, ENVIRONMENT
 from app.database import init_db
 from app.routers import auth, vitals, esp32, live_feed, dashboard
@@ -17,6 +28,9 @@ app = FastAPI(
     redoc_url="/redoc" if ENABLE_API_DOCS else None,
     openapi_url="/openapi.json" if ENABLE_API_DOCS else None,
 )
+
+# Global Unhandled Exception Handler (captures stack trace in JSON logs and delivers 500)
+app.add_exception_handler(Exception, global_exception_handler)
 
 # CORS Configuration
 allowed_origins = [
@@ -75,6 +89,14 @@ app.add_middleware(
     max_age=86400,  # 24 hours
 )
 
+# Observability, Request Correlation & Security Gate Middleware
+app.middleware("http")(security_and_logging_middleware)
+
+# Routine Health Check Endpoint (suppressed from Loki logs and metrics histograms)
+@app.get("/health", tags=["monitoring"])
+def health_check():
+    return {"status": "healthy"}
+
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -85,6 +107,9 @@ app.include_router(vitals.router)
 app.include_router(esp32.router)
 app.include_router(live_feed.router)
 
+# Instrument FastAPI app with Prometheus / VictoriaMetrics metrics at /metrics
+setup_metrics(app)
+
 
 @app.on_event("startup")
 def on_startup():
@@ -92,8 +117,11 @@ def on_startup():
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
+@app.on_event("shutdown")
+def on_shutdown():
+    cleanup_worker_metrics()
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=4241, reload=True)
-
-
