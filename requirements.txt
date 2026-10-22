@@ -32,5 +32,5 @@ statsmodels==0.14.2
 
 # Observability & Monitoring
 python-json-logger==4.2.0
-prometheus-fastapi-instrumentator==8.1.0
+prometheus-fastapi-instrumentator==7.0.2
 prometheus-client==0.26.0
