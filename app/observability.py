@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
-from pythonjsonlogger.jsonlogger import JsonFormatter
+from pythonjsonlogger.json import JsonFormatter
 
 # Multiprocess directory configuration for multi-worker Gunicorn/uWSGI deployments
 multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")

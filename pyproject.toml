@@ -1,0 +1,48 @@
+[project]
+name = "aruga-website"
+version = "0.1.0"
+description = "Intelligent Preventive Healthcare System with Smart Medication Dispensing, Continuous Vital Sign Monitoring, and Early Health Warning"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiofiles>=25.1.0",
+    "bcrypt>=5.0.0",
+    "boto3>=1.43.127",
+    "cryptography>=50.0.2",
+    "email-validator>=2.3.0",
+    "fastapi>=0.162.2",
+    "gunicorn>=23.0.0; sys_platform != 'win32'",
+    "itsdangerous>=2.2.0",
+    "jinja2>=3.1.6",
+    "numpy>=2.5.4",
+    "pandas>=3.1.1",
+    "passlib[bcrypt]>=1.7.4",
+    "prometheus-client>=0.26.0",
+    "prometheus-fastapi-instrumentator>=8.1.0",
+    "psycopg2-binary>=2.9.13",
+    "pydantic>=2.14.3",
+    "python-dotenv>=1.2.4",
+    "python-jose[cryptography]>=3.5.0",
+    "python-json-logger>=4.2.0",
+    "python-multipart>=0.0.33",
+    "scikit-learn>=1.9.1",
+    "sqlalchemy>=2.1.8",
+    "statsmodels>=0.15.0",
+    "uvicorn>=0.54.0",
+    "websockets>=17.4",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "httpx2>=2.16.0",
+    "pytest>=9.2.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+norecursedirs = [".venv", "venv", "static", ".git"]

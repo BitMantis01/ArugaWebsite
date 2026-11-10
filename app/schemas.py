@@ -1,5 +1,5 @@
 import re
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -63,8 +63,7 @@ class VitalsUploadPayload(BaseModel):
     bp_diastolic: Optional[int] = Field(None, alias="bp-diastolic")
     error: Optional[bool] = False
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class DebugOverridePayload(BaseModel):

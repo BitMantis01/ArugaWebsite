@@ -27,7 +27,8 @@ As the population of older adults living independently grows, managing chronic c
 ## 🛠️ Technology Stack
 
 ### Backend & API
-- **Language**: Python 3.10+
+- **Language**: Python 3.13+
+- **Package Manager**: [uv](https://docs.astral.sh/uv/) (`pyproject.toml`, `uv.lock`)
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/) & Starlette
 - **ORM & Database**: SQLAlchemy 2.0 with SQLite / PostgreSQL support
 - **Real-Time Communication**: WebSockets (`websockets`, `uvicorn`)
@@ -69,10 +70,12 @@ ArugaWebsite/
 │   └── services/             # Business logic services
 │       ├── vitals_service.py # Threshold evaluation & alert generation
 │       └── prediction_service.py # Forecasting wrapper service
+├── pyproject.toml            # Project configuration and dependency matrix
+├── uv.lock                   # Deterministic lockfile managed by uv
 ├── main.py                   # Root entry point delegating to app.main:app
 ├── test_populate_vitals.py   # Telemetry simulation script
 ├── .env.example              # Environment template file
-├── requirements.txt          # Dependencies list
+├── requirements.txt          # Exported requirements list
 ├── static/                   # Static assets (CSS, JS, images, uploads)
 └── templates/                # Jinja2 HTML templates
 ```
@@ -82,7 +85,8 @@ ArugaWebsite/
 ## 🚀 Quick Start & Installation
 
 ### 1. Prerequisites
-- Python **3.10** or higher
+- Python **3.13** or higher
+- [uv](https://docs.astral.sh/uv/) (recommended) or standard Python `pip`
 - Git
 
 ### 2. Clone the Repository
@@ -91,7 +95,14 @@ git clone https://github.com/your-username/ArugaWebsite.git
 cd ArugaWebsite
 ```
 
-### 3. Create a Virtual Environment & Install Dependencies
+### 3. Install Dependencies
+
+#### Using `uv` (Recommended)
+```bash
+uv sync
+```
+
+#### Using standard `pip`
 ```bash
 # Create virtual environment
 python -m venv .venv
