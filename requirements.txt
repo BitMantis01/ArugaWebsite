@@ -94,6 +94,10 @@ prometheus-client==0.26.0
     #   prometheus-fastapi-instrumentator
 prometheus-fastapi-instrumentator==8.1.0
     # via aruga-website
+psycopg==3.3.8
+    # via aruga-website
+psycopg-binary==3.3.8 ; implementation_name != 'pypy'
+    # via psycopg
 psycopg2-binary==2.9.13
     # via aruga-website
 pyasn1==0.6.5
@@ -160,7 +164,9 @@ typing-inspection==0.4.5
     #   fastapi
     #   pydantic
 tzdata==2026.6 ; sys_platform == 'emscripten' or sys_platform == 'win32'
-    # via pandas
+    # via
+    #   pandas
+    #   psycopg
 urllib3==2.8.0
     # via botocore
 uvicorn==0.54.0

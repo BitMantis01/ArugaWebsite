@@ -20,6 +20,7 @@ dependencies = [
     "prometheus-client>=0.26.0",
     "prometheus-fastapi-instrumentator>=8.1.0",
     "psycopg2-binary>=2.9.13",
+    "psycopg[binary]>=3.2.0",
     "pydantic>=2.14.3",
     "python-dotenv>=1.2.4",
     "python-jose[cryptography]>=3.5.0",
